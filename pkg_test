@@ -16,7 +16,7 @@ import colorlog
 
 
 #///////////////////////////////////////////////////////////////////////////////
-def list_all_group(pkg_dir):
+def get_all_group(pkg_dir):
     group_dir = []
     for dir_name, sub_dir_list, file_list in os.walk(pkg_dir):
         partial_path = dir_name[len(pkg_dir):]
@@ -30,7 +30,7 @@ def list_all_group(pkg_dir):
     return group_dir
 
 #///////////////////////////////////////////////////////////////////////////////
-def list_all_test_cases_per_group(grp_dir):
+def get_all_test_cases_per_group(grp_dir):
     test_dir_per_group = []
     for dir_name, sub_dir_list, file_list in os.walk(grp_dir):
         partial_path = dir_name[len(grp_dir):]
@@ -43,6 +43,11 @@ def list_all_test_cases_per_group(grp_dir):
     return test_dir_per_group        
             
 #///////////////////////////////////////////////////////////////////////////////
+def get_all_test_specs_per_test(test_dir):
+    test_specs_per_test = []
+    specs_dir = test_dir +"/specs"
+    test_specs_per_test = listdir(specs_dir)
+    return test_specs_per_test        
 
 
 """
@@ -115,21 +120,32 @@ def main(argv):
     logger.debug("arg : pkg_dir = {} ".format(args.pkg_dir))
     #logger.debug("pkg dir = {}".format(pkg_dir))
     if(args.test_id is not None):
+        #XXX run specific tests : -t [group name].[test name]
         logger.debug("arg : test_id = {} ".format(args.test_id))
-
-    group_dir = list_all_group (args.pkg_dir)
-    if(group_dir):
-        for grp_dir in group_dir:
-            logger.debug("--- group {}".format(grp_dir))
-            test_dir_per_group =list_all_test_cases_per_group(grp_dir)
-            if(test_dir_per_group):
-                for test_dir in test_dir_per_group:
-                    logger.debug("  --> test dir {}".format(test_dir))
-                    #TODO 
-    else:            
-        err_msg ="invalid pkg dir {}".format(args.pkg_dir)
-        logger.error(err_msg)
-        return False
+        #TODO
+    else:
+        #XXX run all tests 
+        group_dir = get_all_group (args.pkg_dir)
+        if(group_dir):
+            for grp_dir in group_dir:
+                logger.debug("--- group {}".format(grp_dir))
+                test_dir_per_group =get_all_test_cases_per_group(grp_dir)
+                if(test_dir_per_group):
+                    for test_dir in test_dir_per_group:
+                        logger.debug("  --> test dir {}".format(test_dir))
+                        specs_dir = test_dir +"/specs"
+                        logger.debug("  --> test spec dir {}".format(specs_dir))
+                        if(os.path.exists(specs_dir)):
+                            test_specs_per_test = os.listdir(specs_dir)
+                            logger.info("    --> spec {}".format(test_specs_per_test))
+                            # group_dir , test_dir, specs_dir, test_specs_per_test
+                            #TODO 
+                        else:    
+                            logger.warning("spec dir not exists {}".format(test_specs_per_test))
+        else:            
+            err_msg ="invalid pkg dir {}".format(args.pkg_dir)
+            logger.error(err_msg)
+            return False
 
     return True
 
