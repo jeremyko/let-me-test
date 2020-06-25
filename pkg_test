@@ -1,0 +1,140 @@
+#!/usr/bin/env python
+#-*- coding: utf-8 -*-
+
+import sys
+import os
+import subprocess
+import argparse
+from argparse import RawTextHelpFormatter
+import time
+import datetime
+import logging
+
+import colorlog
+
+
+#///////////////////////////////////////////////////////////////////////////////
+def list_all_group(pkg_dir):
+    group_dir = []
+    for dir_name, sub_dir_list, file_list in os.walk(pkg_dir):
+        partial_path = dir_name[len(pkg_dir):]
+        #print("partial_path => {}".format(partial_path))
+        if( len(partial_path) >0 and 
+            partial_path.startswith('GROUP_') and 
+            partial_path.count(os.sep) == 0) :
+            # this is group directory
+            #print('group : {}'.format(dir_name))
+            group_dir.append(dir_name)
+    return group_dir
+
+#///////////////////////////////////////////////////////////////////////////////
+def list_all_test_cases_per_group(grp_dir):
+    test_dir_per_group = []
+    for dir_name, sub_dir_list, file_list in os.walk(grp_dir):
+        partial_path = dir_name[len(grp_dir):]
+        #print("partial_path => {}".format(partial_path))
+        if( len(partial_path) >0 and 
+            partial_path.count(os.sep) == 1) :
+            # this is test directory
+            #print(' -> test case dir: {}'.format(dir_name))
+            test_dir_per_group.append(dir_name);
+    return test_dir_per_group        
+            
+#///////////////////////////////////////////////////////////////////////////////
+
+
+"""
+├── GROUP_5G
+│   └── CDC_REDIS_INSERT_001
+│       ├── data
+│       │   └── CDC_TEST_CDR
+│       └── specs
+│           └── cdc_redis_insert_test.spec
+├── GROUP_XXX
+│   └── TEST_CASE_AAA
+│       ├── data
+│       │   └── CDC_TEST_CDR
+│       └── specs
+│           ├── test1.spec
+│           └── test2.spec
+├── TEST_RESULT
+│   └── 20200620172022_test_report.txt
+└── auto_test.cfg
+
+
+"""   
+#///////////////////////////////////////////////////////////////////////////////
+def main(argv):
+    # pkg_test [PKG_DIR] [OPTION]
+    parser = argparse.ArgumentParser(prog=argv[0],formatter_class=RawTextHelpFormatter)
+    parser.add_argument('pkg_dir', type=str, help='package directory full path')
+    parser.add_argument('-t','--test_id', required=False,action='append',  \
+            help="specific test id. -t [group name].[test name] "
+            "\n\nex)\n"
+            "pkg_test /CG/PKG_TEST/SOFCS -t GROUP_5G.CDC_REDIS_INSERT_001\n")
+    """
+    parser.add_argument('-p','--parallel', required=False,type=str,  \
+            help= "parallel test. need group info. -p -g [group name]\n ")
+        "\nex) \n" 
+        "pkg_test /CG/PKG_TEST/SOFCS\n" 
+        "pkg_test /CG/PKG_TEST/SOFCS -t GROUP_5G.CDC_REDIS_INSERT_001\n"
+        "pkg_test /CG/PKG_TEST/SOFCS -p -g GROUP_5G\n" )
+    """
+    args = parser.parse_args()
+
+    #pkg_dir = argv[1]
+    #pkg_dir = os.path.abspath(os.path.expanduser(os.path.expandvars(argv[1])))
+
+    logger = logging.getLogger("auto_tester")
+    #logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG) # DEBUG, INFO, WARNING, ERROR, CRITICAL
+    stream_hander = colorlog.StreamHandler()
+    stream_hander.setFormatter(colorlog.ColoredFormatter(
+	    '%(log_color)s %(asctime)s %(levelname)8s %(funcName)24s:%(lineno)4d  %(message)s',
+        datefmt=None,
+	    reset=True,
+        log_colors={
+            'DEBUG':    'cyan',
+            'INFO':     'green',
+            'WARNING':  'yellow',
+            'ERROR':    'red',
+            'CRITICAL': 'red,bg_white',
+        },
+        secondary_log_colors={},
+        style='%'))
+    logger.addHandler(stream_hander)
+    """
+    logger.debug   ("--- log debug ")
+    logger.info    ("--- log info ")
+    logger.warning ("--- log warning ")
+    logger.error   ("--- log error ")
+    logger.critical("--- log critical ")
+    """
+    logger.debug("arg : pkg_dir = {} ".format(args.pkg_dir))
+    #logger.debug("pkg dir = {}".format(pkg_dir))
+    if(args.test_id is not None):
+        logger.debug("arg : test_id = {} ".format(args.test_id))
+
+    group_dir = list_all_group (args.pkg_dir)
+    if(group_dir):
+        for grp_dir in group_dir:
+            logger.debug("--- group {}".format(grp_dir))
+            test_dir_per_group =list_all_test_cases_per_group(grp_dir)
+            if(test_dir_per_group):
+                for test_dir in test_dir_per_group:
+                    logger.debug("  --> test dir {}".format(test_dir))
+                    #TODO 
+    else:            
+        err_msg ="invalid pkg dir {}".format(args.pkg_dir)
+        logger.error(err_msg)
+        return False
+
+    return True
+
+#///////////////////////////////////////////////////////////////////////////////
+if __name__ == "__main__":
+    if main(sys.argv):
+        sys.exit(0)
+
+    sys.exit(-1)
+        
