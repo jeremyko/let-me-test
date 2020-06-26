@@ -1,5 +1,11 @@
 #!/usr/bin/env python
+
 #-*- coding: utf-8 -*-
+
+"""
+test automation framework
+
+"""
 
 import sys
 import os
