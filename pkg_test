@@ -144,14 +144,21 @@ class PkgTestDriver:
         for tspec in test_specs_per_test:
             if(tspec.endswith(self._tspec_ext)) :
                 # group_dir , test_dir, specs_dir, test_specs_per_test
-                self.run_one_tspec(tspecs_dir+os.sep+tspec)
+                if (self.run_one_tspec(tspecs_dir+os.sep+tspec) != True):
+                    self.logger.critical("test failed : {}".format(tspec))
+                    return False
         return True
 
     #==================================================================    
     def run_one_tspec(self, tspec):
-        #TODO test_lib. ??
         self.logger.info("    --> tspec file : {}".format(tspec))
-        execfile(tspec)
+        #XXX run one tspec file !
+        try:
+            execfile(tspec)
+        except Exception as e:
+            err_msg = 'error : {} :{}'.format(e.__doc__, e.message)
+            self.logger.error(err_msg)
+            return False
         return True
 
 
@@ -161,11 +168,14 @@ class PkgTestDriver:
 
 
 #///////////////////////////////////////////////////////////////////////////////
+# TSPEC Commands
+#///////////////////////////////////////////////////////////////////////////////
 #TODO XXX 개선
 def test_cmd(a,b,c):
     test_lib.test_cmd(a,b,c)
     return True
 
+#///////////////////////////////////////////////////////////////////////////////
 #///////////////////////////////////////////////////////////////////////////////
 def main(argv):
 
