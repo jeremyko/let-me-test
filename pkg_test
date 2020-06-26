@@ -20,13 +20,13 @@ def get_all_group(pkg_dir):
     group_dir = []
     for dir_name, sub_dir_list, file_list in os.walk(pkg_dir):
         partial_path = dir_name[len(pkg_dir):]
-        #print("partial_path => {}".format(partial_path))
-        if( len(partial_path) >0 and 
-            partial_path.startswith('GROUP_') and 
-            partial_path.count(os.sep) == 0) :
-            # this is group directory
-            #print('group : {}'.format(dir_name))
-            group_dir.append(dir_name)
+        print("partial_path  => {}".format(partial_path))
+        if( len(partial_path) >0 ):  
+            if(( partial_path.startswith('group_') and partial_path.count(os.sep) == 0) or  
+               ( partial_path.startswith(os.sep+'group_') and partial_path.count(os.sep) == 1) ): 
+                    # this is group directory
+                    print('group : {}'.format(dir_name))
+                    group_dir.append(dir_name)
     return group_dir
 
 #///////////////////////////////////////////////////////////////////////////////
@@ -49,27 +49,42 @@ def get_all_test_specs_per_test(test_dir):
     test_specs_per_test = listdir(specs_dir)
     return test_specs_per_test        
 
-
 """
-├── GROUP_5G
-│   └── CDC_REDIS_INSERT_001
-│       ├── data
-│       │   └── CDC_TEST_CDR
-│       └── specs
-│           └── cdc_redis_insert_test.spec
-├── GROUP_XXX
-│   └── TEST_CASE_AAA
-│       ├── data
-│       │   └── CDC_TEST_CDR
-│       └── specs
-│           ├── test1.spec
-│           └── test2.spec
-├── TEST_RESULT
-│   └── 20200620172022_test_report.txt
-└── auto_test.cfg
-
-
+#///////////////////////////////////////////////////////////////////////////////
+    .
+    └── test_pkg
+        ├── group_001
+        │   ├── grp001_test001
+        │   │   ├── data
+        │   │   │   └── mydata_01
+        │   │   │       └── test.txt
+        │   │   └── specs
+        │   │       ├── grp001_test001_spec001.spec
+        │   │       └── grp001_test001_spec002.spec
+        │   └── grp001_test002
+        │       ├── data
+        │       │   └── mydata_01
+        │       │       └── test.txt
+        │       └── specs
+        │           ├── grp001_test002_spec001.spec
+        │           └── grp001_test002_spec002.spec
+        └── group_002
+            ├── grp002_test001
+            │   ├── data
+            │   │   └── mydata_01
+            │   │       └── test.txt
+            │   └── specs
+            │       ├── grp002_test001_spec001.spec
+            │       └── grp002_test001_spec002.spec
+            └── grp002_test002
+                ├── data
+                │   └── mydata_01
+                │       └── test.txt
+                └── specs
+                    ├── grp002_test002_spec001.spec
+                    └── grp002_test002_spec002.spec
 """   
+
 #///////////////////////////////////////////////////////////////////////////////
 def main(argv):
     # pkg_test [PKG_DIR] [OPTION]
@@ -126,6 +141,8 @@ def main(argv):
     else:
         #XXX run all tests 
         group_dir = get_all_group (args.pkg_dir)
+        print("group_dir -->")
+        print(group_dir)
         if(group_dir):
             for grp_dir in group_dir:
                 logger.debug("--- group {}".format(grp_dir))
