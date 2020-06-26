@@ -9,6 +9,10 @@ from argparse import RawTextHelpFormatter
 import time
 import datetime
 import logging
+
+#-------------------------------------------------------------------------------
+from lib_modules import test_lib
+
 #-------------------------------------------------------------------------------
 # 3rd party dependencies
 import colorlog
@@ -54,117 +58,116 @@ import colorlog
 class PkgTestDriver:
 
     #config = None
-    group_dirs = []
-    test_dir_per_group = []
+    _group_dirs = []
+    _test_dir_per_group = []
+    _args = None
+    _tspec_ext ='.tspec'
+    _group_prefix ='group_'
 
     #==================================================================    
     def __init__(self,logger,args):
         self.logger = logger;
-        self.args = args
-
-    #==================================================================    
-    def get_all_group(self,pkg_dir):
-        temp_dirs = os.listdir(pkg_dir)
-        temp_dirs.sort()
-        self.group_dirs = []
-        for dir_name in temp_dirs :
-            #print('dir_name : {}'.format(dir_name))
-            if(dir_name.startswith('group_')) :
-                # this is group directory
-                #print('group : {}'.format(dir_name))
-                self.group_dirs.append(pkg_dir+os.sep+dir_name)
-        return self.group_dirs
-
-    #==================================================================    
-    def get_all_test_cases_per_group(self,grp_dir):
-        temp_dirs = os.listdir(grp_dir)
-        temp_dirs.sort()
-        self.test_dir_per_group = []
-        for dir_name in temp_dirs :
-            self.test_dir_per_group.append(grp_dir+os.sep+dir_name)
-        return self.test_dir_per_group        
-
-    #==================================================================    
-    def get_all_test_specs_per_test(self,test_dir):
-        test_specs_per_test = []
-        specs_dir = test_dir +"/tspecs"
-        test_specs_per_test = os.listdir(specs_dir)
-        return test_specs_per_test        
+        self._args = args
 
     #==================================================================    
     def run_auto_test(self):
         self.logger.debug("run test")
-        if(self.args.test_id is not None):
+        #test_lib.test_cmd("1","2",3) #XXX TEST
+        #self.just_test_func ("test args") # XXX TEST
+        """
+        logger.debug   ("--- log debug ")
+        logger.info    ("--- log info ")
+        logger.warning ("--- log warning ")
+        logger.error   ("--- log error ")
+        logger.critical("--- log critical ")
+        """
+        if(self._args.test_id is not None):
             #XXX run specific tests : -t [group name].[test name]
-            self.logger.debug("arg : test_id = {} ".format(self.args.test_id))
+            self.logger.debug("arg : test_id = {} ".format(self._args.test_id))
             #TODO
         else:
             #XXX run all tests 
-            self.get_all_group (self.args.pkg_dir)
-            if(self.group_dirs):
-                for grp_dir in self.group_dirs:
-                    self.logger.debug("--- group {}".format(grp_dir))
-                    self.get_all_test_cases_per_group(grp_dir)
-                    if(self.test_dir_per_group):
-                        for test_dir in self.test_dir_per_group:
-                            self.logger.debug("  --> test dir {}".format(test_dir))
-                            tspecs_dir = test_dir +"/tspecs"
-                            self.logger.debug("  --> test spec dir {}".format(tspecs_dir))
-                            if(os.path.exists(tspecs_dir)):
-                                test_specs_per_test = os.listdir(tspecs_dir)
-                                test_specs_per_test.sort()
-                                self.logger.info("    --> spec {}".format(test_specs_per_test))
-                                # group_dir , test_dir, specs_dir, test_specs_per_test
-                                #TODO 
-                            else:    
-                                self.logger.warning("spec dir not exists {}".format(test_specs_per_test))
+            self.get_all_groups (self._args.pkg_dir)
+            if(self._group_dirs):
+                self.run_all_groups(self._group_dirs)
             else:            
-                err_msg ="invalid pkg dir {}".format(args.pkg_dir)
+                err_msg ="invalid pkg dir {}".format(_args.pkg_dir)
                 self.logger.error(err_msg)
                 return False
 
         return True
 
-"""
-#///////////////////////////////////////////////////////////////////////////////
-def get_all_group(pkg_dir):
-    temp_dirs = os.listdir(pkg_dir)
-    temp_dirs.sort()
-    group_dirs = []
-    for dir_name in temp_dirs :
-        #print('dir_name : {}'.format(dir_name))
-        if(dir_name.startswith('group_')) :
-            # this is group directory
-            #print('group : {}'.format(dir_name))
-            group_dirs.append(pkg_dir+os.sep+dir_name)
-    return group_dirs
+    #==================================================================    
+    def get_all_groups(self,pkg_dir):
+        temp_dirs = os.listdir(pkg_dir)
+        temp_dirs.sort()
+        self._group_dirs = []
+        for dir_name in temp_dirs :
+            #print('dir_name : {}'.format(dir_name))
+            if(dir_name.startswith(self._group_prefix)) :
+                # this is group directory
+                #print('group : {}'.format(dir_name))
+                self._group_dirs.append(pkg_dir+os.sep+dir_name)
+
+    #==================================================================    
+    def get_all_test_cases_per_group(self,grp_dir):
+        temp_dirs = os.listdir(grp_dir)
+        temp_dirs.sort()
+        self._test_dirs_per_group = []
+        for dir_name in temp_dirs :
+            self._test_dirs_per_group.append(grp_dir+os.sep+dir_name)
+
+    #==================================================================    
+    def run_all_groups(self, groups):
+        for grp_dir in groups:
+            self.logger.debug("--- group {}".format(grp_dir))
+            self.get_all_test_cases_per_group(grp_dir)
+            if(self._test_dirs_per_group):
+                self.run_all_tests_per_group(self._test_dirs_per_group)
+
+    #==================================================================    
+    def run_all_tests_per_group(self, test_dirs):
+        for test_dir in test_dirs:
+            self.logger.debug("  --> test dir {}".format(test_dir))
+            tspecs_dir = test_dir +"/tspecs"
+            self.logger.debug("  --> test spec dir {}".format(tspecs_dir))
+            if(os.path.exists(tspecs_dir)):
+                test_specs_per_test = os.listdir(tspecs_dir)
+                if(test_specs_per_test):
+                    test_specs_per_test.sort()
+                    self.run_all_tspecs_per_test(tspecs_dir,test_specs_per_test)
+            else:    
+                self.logger.warning("spec dir not exists {}".format(test_specs_per_test))
+
+    #==================================================================    
+    def run_all_tspecs_per_test(self,tspecs_dir,test_specs_per_test):
+        for tspec in test_specs_per_test:
+            if(tspec.endswith(self._tspec_ext)) :
+                # group_dir , test_dir, specs_dir, test_specs_per_test
+                self.run_one_tspec(tspecs_dir+os.sep+tspec)
+        return True
+
+    #==================================================================    
+    def run_one_tspec(self, tspec):
+        #TODO test_lib. ??
+        self.logger.info("    --> tspec file : {}".format(tspec))
+        execfile(tspec)
+        return True
+
+
+    #==================================================================    
+    def just_test_func(self, args):
+        self.logger.info("args : {}".format(args))
+
 
 #///////////////////////////////////////////////////////////////////////////////
-def get_all_test_cases_per_group(grp_dir):
-    temp_dirs = os.listdir(grp_dir)
-    temp_dirs.sort()
-    test_dir_per_group = []
-    for dir_name in temp_dirs :
-        test_dir_per_group.append(grp_dir+os.sep+dir_name)
-    return test_dir_per_group        
-
-#///////////////////////////////////////////////////////////////////////////////
-def get_all_test_cases_per_group(grp_dir):
-    for dir_name, sub_dir_list, file_list in os.walk(grp_dir):
-        partial_path = dir_name[len(grp_dir):]
-        #print("partial_path => {}".format(partial_path))
-        if( len(partial_path) >0 and 
-            partial_path.count(os.sep) == 1) :
-            test_dir_per_group.append(dir_name);
-    return test_dir_per_group        
-"""
-            
+#TODO XXX 개선
+def test_cmd(a,b,c):
+    test_lib.test_cmd(a,b,c)
+    return True
 
 #///////////////////////////////////////////////////////////////////////////////
 def main(argv):
-    cur_dtime = datetime.datetime.now()
-    work_day = cur_dtime.strftime('%Y%m%d') 
-    today_easy = cur_dtime.strftime('%Y-%m-%d %H:%M:%S') 
 
     # pkg_test [PKG_DIR] [OPTION]
     parser = argparse.ArgumentParser(prog=argv[0],formatter_class=RawTextHelpFormatter)
@@ -187,33 +190,24 @@ def main(argv):
     #pkg_dir = os.path.abspath(os.path.expanduser(os.path.expandvars(argv[1])))
 
     logger = logging.getLogger("auto_tester")
-    #logger.setLevel(logging.INFO)
+    logger.setLevel(logging.INFO)
     logger.setLevel(logging.DEBUG) # DEBUG, INFO, WARNING, ERROR, CRITICAL
     stream_hander = colorlog.StreamHandler()
     stream_hander.setFormatter(colorlog.ColoredFormatter(
 	    '%(log_color)s %(asctime)s %(levelname)8s %(funcName)24s:%(lineno)4d  %(message)s',
-        datefmt=None,
-	    reset=True,
-        log_colors={
-            'DEBUG':    'cyan',
-            'INFO':     'green',
-            'WARNING':  'yellow',
-            'ERROR':    'red',
-            'CRITICAL': 'red,bg_white',
-        },
-        secondary_log_colors={},
-        style='%'))
+        datefmt=None, reset=True,
+        log_colors={'DEBUG':'cyan', 'INFO':'green', 'WARNING':'yellow', 
+                    'ERROR':'red', 'CRITICAL':'red,bg_white' },
+        secondary_log_colors={}, style='%'))
     logger.addHandler(stream_hander)
-    """
-    logger.debug   ("--- log debug ")
-    logger.info    ("--- log info ")
-    logger.warning ("--- log warning ")
-    logger.error   ("--- log error ")
-    logger.critical("--- log critical ")
-    """
     logger.debug("arg : pkg_dir = {} ".format(args.pkg_dir))
     #logger.debug("pkg dir = {}".format(pkg_dir))
 
+    cur_dtime = datetime.datetime.now()
+    logger.info(" ")
+    logger.info("{} start".format(cur_dtime.strftime('%Y-%m-%d %H:%M:%S')))
+    #work_day = cur_dtime.strftime('%Y%m%d') 
+    #today_easy = cur_dtime.strftime('%Y-%m-%d %H:%M:%S') 
     try:
         driver = PkgTestDriver(logger,args)
         if driver.run_auto_test() == False:
@@ -231,39 +225,6 @@ def main(argv):
     return True        
 
 
-    """
-    if(args.test_id is not None):
-        #XXX run specific tests : -t [group name].[test name]
-        logger.debug("arg : test_id = {} ".format(args.test_id))
-        #TODO
-    else:
-        #XXX run all tests 
-        group_dir = get_all_group (args.pkg_dir)
-        if(group_dir):
-            for grp_dir in group_dir:
-                logger.debug("--- group {}".format(grp_dir))
-                test_dir_per_group =get_all_test_cases_per_group(grp_dir)
-                if(test_dir_per_group):
-                    for test_dir in test_dir_per_group:
-                        logger.debug("  --> test dir {}".format(test_dir))
-                        tspecs_dir = test_dir +"/tspecs"
-                        logger.debug("  --> test spec dir {}".format(tspecs_dir))
-                        if(os.path.exists(tspecs_dir)):
-                            test_specs_per_test = os.listdir(tspecs_dir)
-                            test_specs_per_test.sort()
-                            logger.info("    --> spec {}".format(test_specs_per_test))
-                            # group_dir , test_dir, specs_dir, test_specs_per_test
-                            #TODO 
-                        else:    
-                            logger.warning("spec dir not exists {}".format(test_specs_per_test))
-        else:            
-            err_msg ="invalid pkg dir {}".format(args.pkg_dir)
-            logger.error(err_msg)
-            return False
-
-    return True
-    """
-
 #///////////////////////////////////////////////////////////////////////////////
 if __name__ == "__main__":
     if main(sys.argv):
@@ -271,3 +232,21 @@ if __name__ == "__main__":
 
     sys.exit(-1)
         
+#-----------------------------
+"""
+for grp_dir in self._group_dirs:
+    self.logger.debug("--- group {}".format(grp_dir))
+    self.get_all_test_cases_per_group(grp_dir)
+    if(self._test_dir_per_group):
+        for test_dir in self._test_dir_per_group:
+            self.logger.debug("  --> test dir {}".format(test_dir))
+            tspecs_dir = test_dir +"/tspecs"
+            self.logger.debug("  --> test spec dir {}".format(tspecs_dir))
+            if(os.path.exists(tspecs_dir)):
+                test_specs_per_test = os.listdir(tspecs_dir)
+                if(test_specs_per_test):
+                    test_specs_per_test.sort()
+                    self.run_tspecs(test_specs_per_test)
+            else:    
+                self.logger.warning("spec dir not exists {}".format(test_specs_per_test))
+"""                

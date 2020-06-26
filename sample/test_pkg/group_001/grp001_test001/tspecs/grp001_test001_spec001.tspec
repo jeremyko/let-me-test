@@ -1,1 +1,14 @@
-TODO
+# description : test
+print("in tspec !!!")
+test_cmd ("11","22",33)
+# set_cfg   /CFG/NMDConfig.xml /NMD/APPLICATION/FM/REDIS_PIPELINE_THRESHOLD_CNT   30
+# run_cli_cmd   STOP-PRC:OFCS:upms_a:GTP_SMF:FM:FMS01
+# run_cli_cmd   STAR-PRC:OFCS:upms_a:GTP_SMF:FM:FMS01
+# save_prc_pid   GTP_SMF   FMS01
+# save_cur_file_line_cnt   /LOG/GTP_SMF/FMS01_1.20200624
+# send_simul ${SPEC_DATA}/CDC_TEST_CDR
+# wait_secs 10
+# assert_prc_same_pid   GTP_SMF   FMS01
+# test_eq_prc_output   "redis-cli -p 7001 dbsize"   "(integer) 100"
+# assert_file_grep  "OK GOOD"   /LOG/GTP_SMF/FMS01_1.20200624
+
