@@ -2,6 +2,7 @@
 
 import sys
 import os
+import subprocess
 
 from tspec_cmd_impl import test_lib
 
