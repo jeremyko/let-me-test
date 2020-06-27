@@ -1,1 +1,2 @@
-test_cmd_FAIL ("l","m",600)
+#test_cmd_FAIL ("l","m",600)
+#test_cmd ("l","m",600)
