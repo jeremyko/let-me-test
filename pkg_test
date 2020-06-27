@@ -16,7 +16,7 @@ import datetime
 import logging
 
 #-------------------------------------------------------------------------------
-from lib_modules import pkg_test_driver
+from internal import pkg_test_driver
 
 #-------------------------------------------------------------------------------
 # 3rd party dependencies

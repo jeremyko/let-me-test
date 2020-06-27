@@ -3,7 +3,7 @@
 import sys
 import os
 
-import test_lib
+from tspec_cmd_impl import test_lib
 
 _g_info_repo = {}
 _g_logger  = None
@@ -64,7 +64,7 @@ class PkgTestDriver:
     #==================================================================    
     def run_auto_test(self):
         self.logger.debug("run test")
-        #test_lib.test_cmd("1","2",3) #XXX TEST
+        #test_cmd.test_cmd("1","2",3) #XXX TEST
         #self.just_test_func ("test args") # XXX TEST
         """
         logger.debug   ("--- log debug ")
@@ -168,15 +168,15 @@ class PkgTestDriver:
 #정보를 저장하고 다음 명령에서 찾을수 있어야 함
 #TODO XXX 개선 : tspec command 를 해당 모듈의 명령으로 전달만 수행 
 def test_cmd(a,b,c):
+    global _g_logger
+    global _g_info_repo 
     #self.logger.info("invoked in context ") # error XXX 
     #print("globals : ")
     #print(globals())
-    test_lib.test_cmd(_g_logger, a,b,c)
-    global _g_info_repo 
+    test_lib.test_1(_g_logger, a,b,c)
     _g_info_repo ["val a"] = a
     _g_info_repo ["val b"] = b
     _g_info_repo ["val c"] = c
-    global _g_logger
     _g_logger.info("_g_logger test 1") 
     #print(_g_info_repo)
     return True
