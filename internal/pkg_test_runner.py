@@ -46,7 +46,7 @@ _g_logger  = None
 """   
 
 #///////////////////////////////////////////////////////////////////////////////
-class PkgTestDriver:
+class PkgTestRunner:
 
     #config = None
     _group_dirs = []
@@ -63,7 +63,7 @@ class PkgTestDriver:
         _g_logger = logger
 
     #==================================================================    
-    def run_auto_test(self):
+    def run_test(self):
         self.logger.debug("run test")
         #test_cmd.test_cmd("1","2",3) #XXX TEST
         #self.just_test_func ("test args") # XXX TEST

@@ -15,7 +15,7 @@ import datetime
 import logging
 
 #-------------------------------------------------------------------------------
-from internal import pkg_test_driver
+from internal import pkg_test_runner
 
 #-------------------------------------------------------------------------------
 # 3rd party dependencies
@@ -64,14 +64,14 @@ def main(argv):
     #work_day = cur_dtime.strftime('%Y%m%d') 
 
     try:
-        driver = pkg_test_driver.PkgTestDriver(logger,args)
-        if driver.run_auto_test() == False:
+        #=================================================
+        driver = pkg_test_runner.PkgTestRunner(logger,args)
+        if driver.run_test() == False:
             return False
-
+        #=================================================
         cur_dtime = datetime.datetime.now()
         logger.info(" ")
         logger.info("{} end".format(cur_dtime.strftime('%Y-%m-%d %H:%M:%S')))
-    
     except Exception as e:
         err_msg = 'error : {} :{}'.format(e.__doc__, e.message)
         logger.error(err_msg)
