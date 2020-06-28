@@ -10,42 +10,6 @@ _g_info_repo = {}
 _g_logger  = None
 
 #///////////////////////////////////////////////////////////////////////////////
-"""
-.
-└── test_pkg
-    ├── group_001
-    │   ├── grp001_test001
-    │   │   ├── data
-    │   │   │   └── mydata_01
-    │   │   │       └── test.txt
-    │   │   └── tspecs
-    │   │       ├── grp001_test001_spec001.tspec
-    │   │       └── grp001_test001_spec002.tspec
-    │   └── grp001_test002
-    │       ├── data
-    │       │   └── mydata_01
-    │       │       └── test.txt
-    │       └── tspecs
-    │           ├── grp001_test002_spec001.tspec
-    │           └── grp001_test002_spec002.tspec
-    └── group_002
-        ├── grp002_test001
-        │   ├── data
-        │   │   └── mydata_01
-        │   │       └── test.txt
-        │   └── tspecs
-        │       ├── grp002_test001_spec001.tspec
-        │       └── grp002_test001_spec002.tspec
-        └── grp002_test002
-            ├── data
-            │   └── mydata_01
-            │       └── test.txt
-            └── tspecs
-                ├── grp002_test002_spec001.tspec
-                └── grp002_test002_spec002.tspec
-"""   
-
-#///////////////////////////////////////////////////////////////////////////////
 class PkgTestRunner:
 
     #config = None
