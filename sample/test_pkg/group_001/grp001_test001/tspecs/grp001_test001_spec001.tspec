@@ -2,6 +2,7 @@
 # self.logger.info("invoked in context ")  
 test_cmd ("11","22",33)
 test_cmd_remember()
+wait_secs(10)    
 #test_err()
 # set_cfg   /CFG/NMDConfig.xml /NMD/APPLICATION/FM/REDIS_PIPELINE_THRESHOLD_CNT   30
 # run_cli_cmd   STOP-PRC:OFCS:upms_a:GTP_SMF:FM:FMS01

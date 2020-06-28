@@ -5,6 +5,7 @@ import os
 import subprocess
 
 from tspec_cmd_impl import test_lib
+from tspec_cmd_impl import lmt_time
 
 _g_info_repo = {}
 _g_logger  = None
@@ -157,4 +158,6 @@ def test_cmd_remember():
     _g_logger.info("_g_logger test 2 ") 
     return True
 
+def wait_secs(secs):
+    lmt_time.wait_secs(_g_logger, secs)
 
