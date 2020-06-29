@@ -6,6 +6,8 @@ test_cmd_remember()
 test_eq(1,1)
 #test_eq(1,2)
 test_eq('1','1')
+#run_shell_cmd("ls -al")
+run_shell_cmd("ls ")
 #test_eq('1','2')
 #test_err()
 # set_cfg   /CFG/NMDConfig.xml /NMD/APPLICATION/FM/REDIS_PIPELINE_THRESHOLD_CNT   30

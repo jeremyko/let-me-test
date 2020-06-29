@@ -13,6 +13,7 @@ from argparse import RawTextHelpFormatter
 import time
 import datetime
 import logging
+import traceback
 
 #-------------------------------------------------------------------------------
 from core import pkg_test_runner
@@ -60,6 +61,7 @@ def main(argv):
         args.pkg_dir += os.sep
 
     logger.debug("arg : pkg_dir = {} ".format(args.pkg_dir))
+    logger.debug("run specific test = {} ".format(args.test_id))
 
     start_dtime = datetime.datetime.now()
     logger.info("---------------------------------------------------------")
@@ -75,6 +77,8 @@ def main(argv):
     except Exception as e:
         err_msg = 'error : {} :{}'.format(e.__doc__, e.message)
         logger.error(err_msg)
+        cl, exc, tb = sys.exc_info()
+        logger.critical("{}".format(traceback.extract_tb(tb))) 
         return False
     finally:
         end_dtime = datetime.datetime.now()
