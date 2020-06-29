@@ -9,18 +9,17 @@ from tspec_cmd_impl import test_lib
 from tspec_cmd_impl import lmt_time
 from tspec_cmd_impl import lmt_assert
 from tspec_cmd_impl import lmt_shell
-#from tspec_cmd_impl import tspec_cmd_impl
 from core import lmt_exception
 
 _g_info_repo = {}
-_g_logger  = None
+_g_logger  = None # XXX
 
 #///////////////////////////////////////////////////////////////////////////////
 class PkgTestRunner:
 
     #config = None
     _group_dirs = [] #group dir name only
-    _group_dirs_full_path = [] # group dir full path
+    _group_dirs_full = [] # group dir full path
     _test_dir_per_group = []
     _failed_tests = []
     _test_dirs_per_group_full = []
@@ -34,7 +33,7 @@ class PkgTestRunner:
     #==================================================================    
     def reset_variables(self):
         _group_dirs = [] #group dir name only
-        _group_dirs_full_path = [] # group dir full path
+        _group_dirs_full = [] # group dir full path
         _test_dir_per_group = []
         _failed_tests = []
         _test_dirs_per_group_full = []
@@ -53,12 +52,14 @@ class PkgTestRunner:
         _g_logger = logger
 
     #==================================================================    
+    #==================================================================    
     def run_test(self):
         self.reset_variables()
 
         self.get_groups ()
 
         if(self._group_dirs):
+
             self.run_groups()
 
             if(self._failed_test_cnt >0 ):
@@ -79,54 +80,53 @@ class PkgTestRunner:
 
     #==================================================================    
     def get_groups(self):
-        temp_dirs = os.listdir(self._args.pkg_dir)
-        temp_dirs.sort()
+        grp_dirs = os.listdir(self._args.pkg_dir)
+        grp_dirs.sort()
         self._group_dirs = []
-        self._group_dirs_full_path = []
-        for dir_name in temp_dirs :
-            #print('dir_name : {}'.format(dir_name))
-            if(dir_name.startswith(self._group_prefix)) :
+        self._group_dirs_full = []
+        for grp_dir_name in grp_dirs :
+            if(grp_dir_name.startswith(self._group_prefix)) :
                 # this is group directory
-                #print('group : {}'.format(dir_name))
-                self._group_dirs_full_path.append(self._args.pkg_dir+dir_name) # pkg_dir ends with os.sep
-                self._group_dirs.append(dir_name) 
+                self._group_dirs_full.append(self._args.pkg_dir+grp_dir_name) # pkg_dir ends with os.sep
+                self._group_dirs.append(grp_dir_name) 
 
     #==================================================================    
     def run_groups(self):
         index =0
-        for grp_dir in self._group_dirs :
+        for grp_dir_name in self._group_dirs :
             self.logger.info(" ")
-            #self.logger.info("[RUN GROUP] : {}".format(grp_dir))
-            self.logger.debug("--- group {}".format(self._group_dirs_full_path[index]))
-            self.get_test_cases_per_group(self._group_dirs_full_path[index],grp_dir)
-            if(self._test_dirs_per_group_full):
-                self.run_tests_per_group(grp_dir)
+            self.logger.debug("--- group {}".format(self._group_dirs_full[index]))
+            self.get_test_cases_per_group(self._group_dirs_full[index],grp_dir_name)
             index += 1    
 
+            if(self._test_dirs_per_group_full):
+                self.run_tests_per_group(grp_dir_name)
+
+
     #==================================================================    
-    def get_test_cases_per_group(self,group_dir_full, grp_dir):
+    def get_test_cases_per_group(self, group_dir_full, grp_dir_name):
         self._test_dirs_per_group_full = []
-        self._test_dirs_per_group = []
-        temp_dirs = os.listdir(group_dir_full)
-        temp_dirs.sort()
-        for test_dir in temp_dirs :
+        self._test_dirs_per_group      = []
+        test_dirs = os.listdir(group_dir_full)
+        test_dirs.sort()
+        for test_dir_name in test_dirs :
             if(self._args.test_id is not None):
                 #run specific test : -t [group name].[test name]
                 # ex) 'group_001.grp001_test001' 
-                filter_name = grp_dir + "." +test_dir
+                filter_name = grp_dir_name + "." + test_dir_name
                 self.logger.debug("filter_name = {}".format(filter_name))
                 for grp_and_test in self._args.test_id:
                     if(filter_name == grp_and_test):
                         self.logger.info("[run specific test] {}".format(grp_and_test))
-                        self._test_dirs_per_group_full.append(group_dir_full+os.sep+test_dir)
-                        self._test_dirs_per_group.append(test_dir)
+                        self._test_dirs_per_group_full.append(group_dir_full+os.sep+test_dir_name)
+                        self._test_dirs_per_group.append(test_dir_name)
             else:       
-                self._test_dirs_per_group_full.append(group_dir_full+os.sep+test_dir)
-                self._test_dirs_per_group.append(test_dir)
+                self._test_dirs_per_group_full.append(group_dir_full+os.sep+test_dir_name)
+                self._test_dirs_per_group.append(test_dir_name)
 
     #==================================================================    
-    def run_tests_per_group(self, grp_dir):
-        self.logger.info("[GROUP] : {}".format(grp_dir))
+    def run_tests_per_group(self, grp_dir_name):
+        self.logger.info("[GROUP] : {}".format(grp_dir_name))
         index = 0
         for test_dir_full in self._test_dirs_per_group_full :
             self.logger.info("  ")
@@ -157,7 +157,6 @@ class PkgTestRunner:
         self.logger.debug("  [tspec_names] : {}".format(tspec_names))
         for tspec_name in tspec_names:
             if(tspec_name.endswith(self._tspec_ext)) :
-                # group_dir , test_dir, specs_dir, test_specs_per_test
                 if (self.run_one_tspec(tspecs_dir_full+os.sep+tspec_name, tspec_name) != True):
                     #self.logger.error("        [FAILED] : {}".format(tspec_name))
                     self.logger.error("        [FAILED] ")
@@ -209,13 +208,11 @@ class PkgTestRunner:
 # tspec commands bridge 
 #///////////////////////////////////////////////////////////////////////////////
 #정보를 저장하고 다음 명령에서 찾을수 있어야 함
-#TODO XXX 개선 : tspec command 를 해당 모듈의 명령으로 전달만 수행 
+#TODO 개선 : tspec command 를 해당 모듈의 명령으로 전달만 수행 
 def test_cmd(a,b,c):
     global _g_logger
     global _g_info_repo 
     #self.logger.info("invoked in context ") # error XXX 
-    #print("globals : ")
-    #print(globals())
     test_lib.test_1(_g_logger, a,b,c)
     _g_info_repo ["val a"] = a
     _g_info_repo ["val b"] = b
