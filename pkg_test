@@ -15,7 +15,7 @@ import datetime
 import logging
 
 #-------------------------------------------------------------------------------
-from internal import pkg_test_runner
+from core import pkg_test_runner
 
 #-------------------------------------------------------------------------------
 # 3rd party dependencies
