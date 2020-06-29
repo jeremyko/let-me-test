@@ -1,0 +1,6 @@
+from core import lmt_exception
+
+#///////////////////////////////////////////////////////////////////////////////
+def save_cur_file_line_cnt(logger,file_path):
+    #TODO
+    return True

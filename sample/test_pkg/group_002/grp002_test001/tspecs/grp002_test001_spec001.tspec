@@ -1,1 +1,1 @@
-test_cmd ("h","i",400)
+set_cfg('/root/CFG/NMD_Config.xml','222','333')

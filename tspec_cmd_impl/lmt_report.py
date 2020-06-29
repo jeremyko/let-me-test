@@ -1,0 +1,6 @@
+from core import lmt_exception
+
+#///////////////////////////////////////////////////////////////////////////////
+def write_report_msg (logger,msg):
+    #TODO
+    return True

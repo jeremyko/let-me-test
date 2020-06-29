@@ -48,7 +48,8 @@ def main(argv):
 
     logger = logging.getLogger("auto_tester")
     logger.setLevel(logging.INFO)
-    #logger.setLevel(logging.DEBUG) # DEBUG, INFO, WARNING, ERROR, CRITICAL
+    logger.setLevel(logging.DEBUG) #TODO from config
+    # DEBUG, INFO, WARNING, ERROR, CRITICAL
     stream_hander = colorlog.StreamHandler()
     stream_hander.setFormatter(colorlog.ColoredFormatter(
 	    '%(log_color)s %(asctime)s %(levelname)8s %(funcName)24s:%(lineno)4d  %(message)s',
