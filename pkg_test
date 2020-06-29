@@ -16,7 +16,7 @@ import logging
 import traceback
 
 #-------------------------------------------------------------------------------
-from core import pkg_test_runner
+from core import lmt_runner
 
 #-------------------------------------------------------------------------------
 # 3rd party dependencies
@@ -70,7 +70,7 @@ def main(argv):
 
     try:
         #=================================================
-        driver = pkg_test_runner.PkgTestRunner(logger,args)
+        driver = lmt_runner.PkgTestRunner(logger,args)
         if driver.run_test() == False:
             return False
         #=================================================
