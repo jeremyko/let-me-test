@@ -44,17 +44,6 @@ class PkgTestRunner:
         _group_prefix ='group_'
         _failed_test_cnt = 0 
         _succeeded_test_cnt = 0
-        """
-        _failed_test_cnt = 0 
-        _succeeded_test_cnt = 0
-        _group_dirs = []
-        _group_dirs_full_path = []
-        _test_dir_per_group = []
-        _failed_tests = []
-        _test_dirs_per_group_full = []
-        _test_dirs_per_group = []
-        _args = None
-        """
 
     #==================================================================    
     def __init__(self,logger,args):
@@ -195,6 +184,7 @@ class PkgTestRunner:
             self.logger.error("       - tspec   => {}".format(traceback.extract_tb(tb)[1][0])) 
             self.logger.error("       - line no => {}".format(traceback.extract_tb(tb)[1][1])) 
             self.logger.error("       - test    => {}".format(traceback.extract_tb(tb)[1][3]))
+            del tb
             return False
         except Exception as e:
             err_msg = '      error : {} :{}'.format(e.__doc__, e.message)
@@ -203,6 +193,7 @@ class PkgTestRunner:
             self.logger.error("       - tspec   => {}".format(traceback.extract_tb(tb)[1][0])) 
             self.logger.error("       - line no => {}".format(traceback.extract_tb(tb)[1][1])) 
             self.logger.error("       - test    => {}".format(traceback.extract_tb(tb)[1][3]))
+            del tb
             return False
         #self.logger.info("        [PASSED]    : {}".format(tspec_path_full))
         self.logger.info("    [PASSED]")

@@ -78,7 +78,8 @@ def main(argv):
         err_msg = 'error : {} :{}'.format(e.__doc__, e.message)
         logger.error(err_msg)
         cl, exc, tb = sys.exc_info()
-        logger.critical("{}".format(traceback.extract_tb(tb))) 
+        logger.critical("{}".format(traceback.extract_tb(tb)[1])) 
+        del tb
         return False
     finally:
         end_dtime = datetime.datetime.now()
