@@ -47,7 +47,7 @@ def main(argv):
 
     logger = logging.getLogger("auto_tester")
     logger.setLevel(logging.INFO)
-    logger.setLevel(logging.DEBUG) # DEBUG, INFO, WARNING, ERROR, CRITICAL
+    #logger.setLevel(logging.DEBUG) # DEBUG, INFO, WARNING, ERROR, CRITICAL
     stream_hander = colorlog.StreamHandler()
     stream_hander.setFormatter(colorlog.ColoredFormatter(
 	    '%(log_color)s %(asctime)s %(levelname)8s %(funcName)24s:%(lineno)4d  %(message)s',
@@ -56,12 +56,15 @@ def main(argv):
                     'ERROR':'red', 'CRITICAL':'red,bg_white' },
         secondary_log_colors={}, style='%'))
     logger.addHandler(stream_hander)
+    if(args.pkg_dir.endswith(os.sep) != True) :
+        args.pkg_dir += os.sep
+
     logger.debug("arg : pkg_dir = {} ".format(args.pkg_dir))
 
-    cur_dtime = datetime.datetime.now()
-    logger.info(" ")
-    logger.info("{} start".format(cur_dtime.strftime('%Y-%m-%d %H:%M:%S')))
-    #work_day = cur_dtime.strftime('%Y%m%d') 
+    start_dtime = datetime.datetime.now()
+    logger.info("---------------------------------------------------------")
+    logger.info("TEST START {}".format(start_dtime.strftime('%Y-%m-%d %H:%M:%S')))
+    logger.info("---------------------------------------------------------")
 
     try:
         #=================================================
@@ -69,13 +72,17 @@ def main(argv):
         if driver.run_test() == False:
             return False
         #=================================================
-        cur_dtime = datetime.datetime.now()
-        logger.info(" ")
-        logger.info("{} end".format(cur_dtime.strftime('%Y-%m-%d %H:%M:%S')))
     except Exception as e:
         err_msg = 'error : {} :{}'.format(e.__doc__, e.message)
         logger.error(err_msg)
         return False
+    finally:
+        end_dtime = datetime.datetime.now()
+        elapsed = end_dtime - start_dtime
+        logger.info("---------------------------------------------------------")
+        logger.info("TEST END   {} -> ELAPSED SEC ({})".    \
+                format(end_dtime.strftime('%Y-%m-%d %H:%M:%S'),elapsed.total_seconds()))
+        logger.info("---------------------------------------------------------")
     
     return True        
 
