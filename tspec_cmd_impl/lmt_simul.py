@@ -1,6 +1,6 @@
 from core import lmt_exception
 
 #///////////////////////////////////////////////////////////////////////////////
-def send_simul (runner,cdr_dir):
+def send_simul (runner_ctx,cdr_dir):
     #TODO
     return True

@@ -28,11 +28,14 @@ class PkgTestRunner:
     __failed_test_cnt = 0 
     __succeeded_test_cnt = 0
     __temp_internal_use_only_dir = None
-    __package_name = None
-    __system_name  = None
+    package_name = None
+    system_name  = None
     __log_level    = None
 
+    info_repo = {}
     xml_cfg_path = None
+    pfnm_userid  = None
+    pfnm_passwd  = None
 
     PKG_CFG_NAME     ='per_pkg.ini'
     TSPEC_FILE_EXT   ='.tspec'
@@ -102,13 +105,16 @@ class PkgTestRunner:
         # read per_pkg.ini, pkg_dir ends with os.sep
         self.__ini_config.read(self.__args.pkg_dir+self.PKG_CFG_NAME)
         self.xml_cfg_path = self.__ini_config['COMMON']['CONFIG_PATH']
-        self.__package_name = self.__ini_config['COMMON']['PACKAGE_NAME']
-        self.__system_name  = self.__ini_config['COMMON']['SYSTEM_NAME']
+        self.pfnm_userid  = self.__ini_config['PFNM']['USER']
+        self.pfnm_passwd  = self.__ini_config['PFNM']['PASSWD']
+        self.package_name = self.__ini_config['COMMON']['PACKAGE_NAME']
+        self.system_name  = self.__ini_config['COMMON']['SYSTEM_NAME']
         self.__log_level    = self.__ini_config['LOG']['LOG_LEVEL']
         self.__temp_internal_use_only_dir = self.__args.pkg_dir + 'do_not_delete_internal_use'
+
         self.logger.info("- xml_cfg_path = {}".format(self.xml_cfg_path))
-        self.logger.info("- package_name = {}".format(self.__package_name))
-        self.logger.info("- system_name  = {}".format(self.__system_name ))
+        self.logger.info("- package_name = {}".format(self.package_name))
+        self.logger.info("- system_name  = {}".format(self.system_name ))
         self.logger.info("- log_level    = {}".format(self.__log_level   ))
         self.logger.info("- temp_internal_use_only_dir = {}".
                 format(self.__temp_internal_use_only_dir))
@@ -244,6 +250,7 @@ class PkgTestRunner:
                     #self.logger.error("        [FAILED] : {}".format(tspec_name))
                     self.logger.error("        [FAILED] ")
                     self.__failed_test_cnt += 1
+                    return False # one tspec fail -> whole test fail
 
         return True
 
@@ -257,12 +264,12 @@ class PkgTestRunner:
             #XXX backup config first --> when tspec begins.
             start_dtime = datetime.datetime.now()
             self.backup_config()
-            #exec("self.logger.info('in exec test ')")
             #----------------
             execfile(tspec_path_full)
             #----------------
+
         except lmt_exception.LmtException as lmt_e:
-            err_msg = '      error : {} '.format(lmt_e)
+            err_msg = '      lmt exception : {} '.format(lmt_e)
             self.logger.error(err_msg)
             #traceback.print_exc()
             cl, exc, tb = sys.exc_info()
@@ -275,9 +282,7 @@ class PkgTestRunner:
             err_msg = '      error : {} :{}'.format(e.__doc__, e.message)
             self.logger.error(err_msg)
             cl, exc, tb = sys.exc_info()
-            self.logger.error("       - tspec   => {}".format(traceback.extract_tb(tb)[1][0])) 
-            self.logger.error("       - line no => {}".format(traceback.extract_tb(tb)[1][1])) 
-            self.logger.error("       - test    => {}".format(traceback.extract_tb(tb)[1][3]))
+            self.logger.error(traceback.extract_tb(tb))
             del tb
             return False
         finally:

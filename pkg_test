@@ -43,16 +43,18 @@ def main(argv):
     #pkg_dir = os.path.abspath(os.path.expanduser(os.path.expandvars(argv[1])))
 
     logger = logging.getLogger("auto_tester")
-    #XXX 처음은 info level로 시작되고, lmt_runner.py 에서 재설정됨
-    logger.setLevel(logging.INFO) 
     stream_hander = colorlog.StreamHandler()
     stream_hander.setFormatter(colorlog.ColoredFormatter(
 	    '%(log_color)s %(asctime)s %(levelname)8s %(funcName)24s:%(lineno)4d  %(message)s',
         datefmt=None, reset=True,
         log_colors={'DEBUG':'cyan', 'INFO':'green', 'WARNING':'yellow', 
-                    'ERROR':'red', 'CRITICAL':'red,bg_white' },
+                    'ERROR':'red', 'CRITICAL':'red,bg_white',
+                    'GRPLOG' : 'blue'},
         secondary_log_colors={}, style='%'))
     logger.addHandler(stream_hander)
+    #XXX 처음은 info level로 시작되고, lmt_runner.py 에서 재설정됨
+    logger.setLevel(logging.INFO) 
+
     if(args.pkg_dir.endswith(os.sep) != True) :
         args.pkg_dir += os.sep
 

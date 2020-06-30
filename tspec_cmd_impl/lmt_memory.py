@@ -1,6 +1,6 @@
 from core import lmt_exception
 
 #///////////////////////////////////////////////////////////////////////////////
-def make_swap(runner): 
+def make_swap(runner_ctx): 
     #TODO
     return True

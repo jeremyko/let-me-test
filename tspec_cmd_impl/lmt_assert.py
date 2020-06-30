@@ -1,52 +1,55 @@
 from core import lmt_exception
 
 #///////////////////////////////////////////////////////////////////////////////
-def test_eq(runner,a,b):
+def test_eq(runner_ctx,a,b):
     if(a != b):
         err_msg ="assert failed : {} != {} ".format(a,b)
         raise lmt_exception.LmtException(err_msg)
     return True
 
 #///////////////////////////////////////////////////////////////////////////////
-def assert_app_running(runner, service_name, process_name):
+def assert_app_running(runner_ctx, service_name, process_name):
     return True
 
 #///////////////////////////////////////////////////////////////////////////////
-def assert_prc_running(runner,proc_name):
+def assert_prc_running(runner_ctx,proc_name):
     return True
 
 #///////////////////////////////////////////////////////////////////////////////
-def assert_file_grep(runner,to_find_str, file_path):
+def assert_file_grep(runner_ctx,to_find_str, file_path):
     return True
 
 #///////////////////////////////////////////////////////////////////////////////
-def assert_prc_same_pid(runner,service_name, process_name):
+def assert_prc_same_pid(runner_ctx,service_name, process_name):
+    runner_ctx.logger.info(runner_ctx.info_repo)
+    runner_ctx.logger.info("assert_prc_same_pid : {}".format('pid-'+service_name+process_name))
+    runner_ctx.logger.info("pid = {}".format(runner_ctx.info_repo ['pid-'+service_name+process_name]))  # TEST
     return True
 
 #///////////////////////////////////////////////////////////////////////////////
-def assert_alarm_exists(runner,alarm_code):
+def assert_alarm_exists(runner_ctx,alarm_code):
     return True
 
 #///////////////////////////////////////////////////////////////////////////////
-def assert_alarm_cleared(runner,alarm_code):
+def assert_alarm_cleared(runner_ctx,alarm_code):
     return True
 
 #///////////////////////////////////////////////////////////////////////////////
-def assert_mes_q_full(runner,log_file_path):
+def assert_mes_q_full(runner_ctx,log_file_path):
     return True
 
 #///////////////////////////////////////////////////////////////////////////////
-def assert_mes_q_not_full(runner,log_file_path):
+def assert_mes_q_not_full(runner_ctx,log_file_path):
     return True
 
 #///////////////////////////////////////////////////////////////////////////////
-def test_run_ok(runner,cmd) :
+def test_run_ok(runner_ctx,cmd) :
     return True
 
 #///////////////////////////////////////////////////////////////////////////////
-def test_run_err(runner,cmd) :
+def test_run_err(runner_ctx,cmd) :
     return True
 
 #///////////////////////////////////////////////////////////////////////////////
-def test_eq_prc_output(runner,cmd, val):
+def test_eq_prc_output(runner_ctx,cmd, val):
     return True

@@ -1,1 +1,25 @@
-test_cmd ("a","b",100)
+#-*- coding: utf-8 -*-
+# 한글 사용시  
+# change FM configuration and verify redis insertion success.
+
+set_cfg("APPLICATION/FM/REDIS_PIPELINE_THRESHOLD_CNT",  "30")
+
+run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_SMF:FM:FMS011")
+run_cli_cmd("STAR-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_SMF:FM:FMS01")
+
+save_prc_pid("GTP_SMF",  "FMS01")
+
+save_cur_file_line_cnt("/LOG/GTP_SMF/FMS01_1.${CUR_YYYYMMDD}")
+
+send_simul("${SPEC_DATA}/CDC_TEST_CDR")
+
+wait_secs(3)
+
+assert_prc_same_pid("GTP_SMF", "FMS01")
+
+test_eq_prc_output("redis-cli -p 7001 dbsize", "(integer) 100")
+
+assert_file_grep ("OK GOOD", "/LOG/GTP_SMF/FMS01_1.${CUR_YYYYMMDD}")
+
+# 변경된 설정은 자동으로 원복된다.
+

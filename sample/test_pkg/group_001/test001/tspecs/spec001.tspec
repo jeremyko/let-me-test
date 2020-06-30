@@ -6,19 +6,11 @@ test_cmd_remember()
 test_eq(1,1)
 #test_eq(1,2)
 test_eq('1','1')
+save_prc_pid('GTP_SMF', 'FMS01')
+assert_prc_same_pid('GTP_SMF', 'FMS01')
+
+run_cli_cmd("DISP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}")
 
 #run_shell_cmd("ls -al")
 #run_shell_cmd("ls ")
-#test_eq('1','2')
-#test_err()
-# set_cfg   /CFG/NMDConfig.xml /NMD/APPLICATION/FM/REDIS_PIPELINE_THRESHOLD_CNT   30
-# run_cli_cmd   STOP-PRC:OFCS:upms_a:GTP_SMF:FM:FMS01
-# run_cli_cmd   STAR-PRC:OFCS:upms_a:GTP_SMF:FM:FMS01
-# save_prc_pid   GTP_SMF   FMS01
-# save_cur_file_line_cnt   /LOG/GTP_SMF/FMS01_1.20200624
-# send_simul ${SPEC_DATA}/CDC_TEST_CDR
-# wait_secs 10
-# assert_prc_same_pid   GTP_SMF   FMS01
-# test_eq_prc_output   "redis-cli -p 7001 dbsize"   "(integer) 100"
-# assert_file_grep  "OK GOOD"   /LOG/GTP_SMF/FMS01_1.20200624
 

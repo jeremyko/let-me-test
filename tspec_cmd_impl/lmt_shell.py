@@ -3,7 +3,7 @@ import os
 import subprocess
 
 #///////////////////////////////////////////////////////////////////////////////
-def run_shell_cmd(runner,cmd):
+def run_shell_cmd(runner_ctx,cmd):
     stream = os.popen(cmd)
     output = stream.read()
 
@@ -12,9 +12,9 @@ def run_shell_cmd(runner,cmd):
     output, err = proc.communicate()
     """    
     if(output):
-        runner.logger.info("------- output START ----------------------")
-        runner.logger.info("\n{}".format(output))
-        runner.logger.info("------- output END   ----------------------")
+        runner_ctx.logger.info("------- output START ----------------------")
+        runner_ctx.logger.info("\n{}".format(output))
+        runner_ctx.logger.info("------- output END   ----------------------")
     return True
 
 

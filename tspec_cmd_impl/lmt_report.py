@@ -1,6 +1,6 @@
 from core import lmt_exception
 
 #///////////////////////////////////////////////////////////////////////////////
-def write_report_msg (runner,msg):
+def write_report_msg (runner_ctx,msg):
     #TODO
     return True
