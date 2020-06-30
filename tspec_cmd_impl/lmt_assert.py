@@ -1,53 +1,52 @@
 from core import lmt_exception
 
 #///////////////////////////////////////////////////////////////////////////////
-def test_eq(a,b):
+def test_eq(runner,a,b):
     if(a != b):
         err_msg ="assert failed : {} != {} ".format(a,b)
         raise lmt_exception.LmtException(err_msg)
     return True
 
 #///////////////////////////////////////////////////////////////////////////////
-# TODO
-def assert_app_running(logger, service_name, process_name):
+def assert_app_running(runner, service_name, process_name):
     return True
 
 #///////////////////////////////////////////////////////////////////////////////
-def assert_prc_running(logger,proc_name):
+def assert_prc_running(runner,proc_name):
     return True
 
 #///////////////////////////////////////////////////////////////////////////////
-def assert_file_grep(logger,to_find_str, file_path):
+def assert_file_grep(runner,to_find_str, file_path):
     return True
 
 #///////////////////////////////////////////////////////////////////////////////
-def assert_prc_same_pid(logger,service_name, process_name):
+def assert_prc_same_pid(runner,service_name, process_name):
     return True
 
 #///////////////////////////////////////////////////////////////////////////////
-def assert_alarm_exists(logger,alarm_code):
+def assert_alarm_exists(runner,alarm_code):
     return True
 
 #///////////////////////////////////////////////////////////////////////////////
-def assert_alarm_cleared(logger,alarm_code):
+def assert_alarm_cleared(runner,alarm_code):
     return True
 
 #///////////////////////////////////////////////////////////////////////////////
-def assert_mes_q_full(logger,log_file_path):
+def assert_mes_q_full(runner,log_file_path):
     return True
 
 #///////////////////////////////////////////////////////////////////////////////
-def assert_mes_q_not_full(logger,log_file_path):
+def assert_mes_q_not_full(runner,log_file_path):
     return True
 
 #///////////////////////////////////////////////////////////////////////////////
-def test_run_ok(logger,cmd) :
+def test_run_ok(runner,cmd) :
     return True
 
 #///////////////////////////////////////////////////////////////////////////////
-def test_run_err(logger,cmd) :
+def test_run_err(runner,cmd) :
     return True
 
 #///////////////////////////////////////////////////////////////////////////////
-def test_eq_prc_output(logger,cmd, val):
+def test_eq_prc_output(runner,cmd, val):
     return True

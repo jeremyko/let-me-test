@@ -1,6 +1,6 @@
 from core import lmt_exception
 
 #///////////////////////////////////////////////////////////////////////////////
-def make_swap(logger): 
+def make_swap(runner): 
     #TODO
     return True

@@ -1,25 +1,25 @@
 from core import lmt_exception
 #///////////////////////////////////////////////////////////////////////////////
 #TODO
-def run_cli_cmd(logger,cli_cmd):
+def run_cli_cmd(runner,cli_cmd):
     return True
 
 #///////////////////////////////////////////////////////////////////////////////
-def run_prc(logger,run_cmd):
+def run_prc(runner,run_cmd):
     return True
 
 #///////////////////////////////////////////////////////////////////////////////
-def terminate_prc(logger,proc_name):
+def terminate_prc(runner,proc_name):
     return True
 
 #///////////////////////////////////////////////////////////////////////////////
-def kill_prc(logger,proc_name):
+def kill_prc(runner,proc_name):
     return True
 
 #///////////////////////////////////////////////////////////////////////////////
-def save_prc_pid(logger,service_name, process_name):
+def save_prc_pid(runner,service_name, process_name):
     return True
 
 #///////////////////////////////////////////////////////////////////////////////
-def make_hangup(logger,service_name, process_name,  hangup_time_sec):
+def make_hangup(runner,service_name, process_name,  hangup_time_sec):
     return True

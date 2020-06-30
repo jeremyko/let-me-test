@@ -5,38 +5,44 @@ import os
 import subprocess
 import traceback
 import configparser
+import shutil
+import logging
 
 from tspec_cmd_impl import *
 from core import *
 
 __g_info_repo = {}
-_g_logger  = None # XXX
+_g_runner_self  = None # XXX
 
 #///////////////////////////////////////////////////////////////////////////////
 class PkgTestRunner:
-
-    __ini_config = None
-    __group_dirs = [] #group dir name only
-    __group_dirs_full = [] # group dir full path
-    __failed_tests = []
-    __test_dirs_per_group_full = []
-    __test_dirs_per_group = []
     __args = None
-    __tspec_ext ='.tspec'
-    __group_prefix ='group_'
+    __ini_config = None
+    __group_dirs      = [] # name only
+    __group_dirs_full = [] # full path
+    __test_dirs_per_group      = []
+    __test_dirs_per_group_full = []
+    __failed_tests = []
     __failed_test_cnt = 0 
     __succeeded_test_cnt = 0
+    __xml_cfg_path = None
+    __temp_internal_use_only_dir = None
+    __package_name = None
+    __system_name  = None
+    __log_level    = None
+
+    PKG_CFG_NAME     ='per_pkg.ini'
+    TSPEC_FILE_EXT   ='.tspec'
+    GROUP_DIR_PREFIX ='group_'
 
     #==================================================================    
     def reset_variables(self):
-        __group_dirs = [] #group dir name only
-        __group_dirs_full = [] # group dir full path
-        __failed_tests = []
+        __group_dirs      = [] 
+        __group_dirs_full = [] 
+        __test_dirs_per_group      = []
         __test_dirs_per_group_full = []
-        __test_dirs_per_group = []
         __args = None
-        __tspec_ext ='.tspec'
-        __group_prefix ='group_'
+        __failed_tests    = []
         __failed_test_cnt = 0 
         __succeeded_test_cnt = 0
 
@@ -45,18 +51,24 @@ class PkgTestRunner:
         self.__ini_config = configparser.ConfigParser()
         self.logger = logger;
         self.__args = args
-        global _g_logger
-        _g_logger = logger
+        global _g_runner_self
+        _g_runner_self = self
 
     #==================================================================    
     #==================================================================    
     def run_test(self):
+        self.read_pkg_ini()
         self.reset_variables()
+        #create temporary work directory 
+        if(os.path.isdir(self.__temp_internal_use_only_dir)==False):
+            self.logger.debug("create internal use only dir : {}".
+                    format(self.__temp_internal_use_only_dir))
+            os.mkdir(self.__temp_internal_use_only_dir)
 
+        self.set_log_level()
         self.get_groups ()
 
         if(self.__group_dirs):
-
             self.run_groups()
 
             if(self.__failed_test_cnt >0 ):
@@ -71,8 +83,49 @@ class PkgTestRunner:
             return False
 
         self.logger.info(" ")
-        self.logger.info(" ")
         self.logger.info("TOTAL {} TEST OK".format(self.__succeeded_test_cnt))
+        return True
+
+    #==================================================================    
+    def read_pkg_ini(self):
+        # read per_pkg.ini, pkg_dir ends with os.sep
+        self.__ini_config.read(self.__args.pkg_dir+self.PKG_CFG_NAME)
+        self.__xml_cfg_path = self.__ini_config['COMMON']['CONFIG_PATH']
+        self.__package_name = self.__ini_config['COMMON']['PACKAGE_NAME']
+        self.__system_name  = self.__ini_config['COMMON']['SYSTEM_NAME']
+        self.__log_level    = self.__ini_config['LOG']['LOG_LEVEL']
+        self.__temp_internal_use_only_dir = self.__args.pkg_dir + 'do_not_delete_internal_use'
+        self.logger.info("- xml_cfg_path = {}".format(self.__xml_cfg_path))
+        self.logger.info("- package_name = {}".format(self.__package_name))
+        self.logger.info("- system_name  = {}".format(self.__system_name ))
+        self.logger.info("- log_level    = {}".format(self.__log_level   ))
+        self.logger.info("- temp_internal_use_only_dir = {}".format(self.__temp_internal_use_only_dir))
+
+    #==================================================================    
+    def set_log_level(self):
+        # DEBUG, INFO, WARNING, ERROR, CRITICAL
+        #print ("log level is {}".format(self.__log_level))
+        if(self.__log_level == 'DEBUG'):
+            self.logger.setLevel(logging.DEBUG) 
+        elif(self.__log_level == 'INFO'):
+            self.logger.setLevel(logging.INFO) 
+        elif(self.__log_level == 'WARNING'):
+            self.logger.setLevel(logging.WARNING) 
+        elif(self.__log_level == 'ERROR'):
+            self.logger.setLevel(logging.ERROR) 
+        elif(self.__log_level == 'CRITICAL'):
+            self.logger.setLevel(logging.CRITICAL) 
+        else:
+            self.logger.setLevel(logging.INFO) 
+
+    #==================================================================    
+    #TODO -> remove directory : self.__temp_internal_use_only_dir 
+    def clean_all(self):
+        self.logger.info("clean all temporary files")
+        if(os.path.isdir(self.__temp_internal_use_only_dir)):
+            self.logger.info("remove internal use only dir : {}".format(self.__temp_internal_use_only_dir))
+            #os.rmdir(self.__temp_internal_use_only_dir)
+            shutil.rmtree(self.__temp_internal_use_only_dir) #XXX dangerous 
         return True
 
     #==================================================================    
@@ -82,9 +135,10 @@ class PkgTestRunner:
         self.__group_dirs = []
         self.__group_dirs_full = []
         for grp_dir_name in grp_dirs :
-            if(grp_dir_name.startswith(self.__group_prefix)) :
+            if(grp_dir_name.startswith(self.GROUP_DIR_PREFIX)) :
                 # this is group directory
-                self.__group_dirs_full.append(self.__args.pkg_dir+grp_dir_name) # pkg_dir ends with os.sep
+                self.__group_dirs_full.append(self.__args.pkg_dir+grp_dir_name) 
+                # pkg_dir ends with os.sep
                 self.__group_dirs.append(grp_dir_name) 
 
     #==================================================================    
@@ -131,7 +185,7 @@ class PkgTestRunner:
             #self.logger.info("  [TEST] : {}".format(test_dir_full))
             self.logger.info("  [TEST] : {}".format(self.__test_dirs_per_group[index]))
             tspecs_dir_full = test_dir_full +"/tspecs" # tspec directory path
-            if(os.path.exists(tspecs_dir_full)):
+            if(os.path.isdir(tspecs_dir_full)):
                 tspec_names = os.listdir(tspecs_dir_full) # all tspec path in tspec dir.
                 if(tspec_names):
                     tspec_names.sort()
@@ -153,7 +207,7 @@ class PkgTestRunner:
     def run_all_tspecs_per_test(self, tspecs_dir_full, tspec_names):
         self.logger.debug("  [tspec_names] : {}".format(tspec_names))
         for tspec_name in tspec_names:
-            if(tspec_name.endswith(self.__tspec_ext)) :
+            if(tspec_name.endswith(self.TSPEC_FILE_EXT)) :
                 if (self.run_one_tspec(tspecs_dir_full+os.sep+tspec_name, tspec_name) != True):
                     #self.logger.error("        [FAILED] : {}".format(tspec_name))
                     self.logger.error("        [FAILED] ")
@@ -168,6 +222,8 @@ class PkgTestRunner:
         self.logger.info("    [TSPEC] : {}".format(tspec_path_full))
         #self.logger.info("    [TSPEC] : {}".format(tspec_name))
         try:
+            #XXX backup config first --> when tspec begins.
+            self.backup_config()
             #exec("self.logger.info('in exec test ')")
             #----------------
             execfile(tspec_path_full)
@@ -191,11 +247,26 @@ class PkgTestRunner:
             self.logger.error("       - test    => {}".format(traceback.extract_tb(tb)[1][3]))
             del tb
             return False
+        finally:
+            #XXX auto rollback       --> when tspec file ends..
+            self.rollback_config()
+
         #self.logger.info("        [PASSED]    : {}".format(tspec_path_full))
         self.logger.info("    [PASSED]")
         return True
 
 
+    #==================================================================    
+    def backup_config(self):
+        #TODO
+        self.logger.debug("backup config start")
+        return True
+
+    #==================================================================    
+    def rollback_config(self):
+        #TODO
+        self.logger.debug("rollback config")
+        return True
     #==================================================================    
     def just_test_func(self, args):
         self.logger.info("args : {}".format(args))
@@ -206,86 +277,87 @@ class PkgTestRunner:
 # lmt_time.py
 #///////////////////////////////////////////////////////////////////////////////
 def wait_secs(secs):
-    lmt_time.wait_secs(_g_logger, secs)
-    #tspec_cmd_impl.wait_secs(_g_logger, secs)
+    lmt_time.wait_secs(_g_runner_self, secs)
+    #tspec_cmd_impl.wait_secs(_g_runner_self, secs)
 
 #///////////////////////////////////////////////////////////////////////////////
 # lmt_shell.py
 #///////////////////////////////////////////////////////////////////////////////
 def run_shell_cmd(cmd):
-    lmt_shell.run_shell_cmd(_g_logger,cmd)
-    #tspec_cmd_impl.run_shell_cmd(_g_logger,cmd)
+    lmt_shell.run_shell_cmd(_g_runner_self,cmd)
+    #tspec_cmd_impl.run_shell_cmd(_g_runner_self,cmd)
 
 #///////////////////////////////////////////////////////////////////////////////
 # lmt_config.py
 #///////////////////////////////////////////////////////////////////////////////
-def set_cfg(path, xpath, val):
-    lmt_config.set_cfg(_g_logger,path, xpath, val)
+def set_cfg(xpath, val):
+    lmt_config.set_cfg(_g_runner_self, xpath, val)
+    return True
 
 
 #///////////////////////////////////////////////////////////////////////////////
 # lmt_assert.py
 #///////////////////////////////////////////////////////////////////////////////
 def test_eq(a,b):
-    lmt_assert.test_eq(a,b)
+    lmt_assert.test_eq(_g_runner_self,a,b)
     return True
 
 def assert_app_running(service_name, process_name):
-    lmt_assert.assert_app_running(_g_logger,service_name, process_name)
+    lmt_assert.assert_app_running(_g_runner_self,service_name, process_name)
     return True
 
 def assert_prc_running(proc_name):
-    lmt_assert.assert_prc_running(_g_logger,proc_name)
+    lmt_assert.assert_prc_running(_g_runner_self,proc_name)
     return True
 
 def assert_file_grep(to_find_str, file_path):
-    lmt_assert.assert_file_grep( _g_logger,to_find_str, file_path)
+    lmt_assert.assert_file_grep( _g_runner_self,to_find_str, file_path)
     return True
 
 def assert_prc_same_pid(service_name, process_name):
-    lmt_assert.assert_prc_same_pid(_g_logger,service_name, process_name)
+    lmt_assert.assert_prc_same_pid(_g_runner_self,service_name, process_name)
     return True
 
 def assert_alarm_exists(alarm_code):
-    lmt_assert.assert_alarm_exists(_g_logger,alarm_code)
+    lmt_assert.assert_alarm_exists(_g_runner_self,alarm_code)
     return True
 
 def assert_alarm_cleared(alarm_code):
-    lmt_assert.assert_alarm_cleared(_g_logger,alarm_code)
+    lmt_assert.assert_alarm_cleared(_g_runner_self,alarm_code)
     return True
 
 def assert_mes_q_full(log_file_path):
-    lmt_assert.assert_mes_q_full(_g_logger,log_file_path)
+    lmt_assert.assert_mes_q_full(_g_runner_self,log_file_path)
     return True
 
 def assert_mes_q_not_full(log_file_path):
-    lmt_assert.assert_mes_q_not_full(_g_logger,log_file_path)
+    lmt_assert.assert_mes_q_not_full(_g_runner_self,log_file_path)
     return True
 
 def test_run_ok(cmd) :
-    lmt_assert.test_run_ok(_g_logger, cmd)
+    lmt_assert.test_run_ok(_g_runner_self, cmd)
     return True
 
 def test_run_err(cmd) :
-    lmt_assert.test_run_err(_g_logger,cmd) 
+    lmt_assert.test_run_err(_g_runner_self,cmd) 
     return True
 
 def test_eq_prc_output(cmd, val):
-    lmt_assert.test_eq_prc_output(_g_logger,cmd, val)
+    lmt_assert.test_eq_prc_output(_g_runner_self,cmd, val)
     return True
 
 #///////////////////////////////////////////////////////////////////////////////
 # lmt_file.py
 #///////////////////////////////////////////////////////////////////////////////
 def save_cur_file_line_cnt(file_path):
-    lmt_file.save_cur_file_line_cnt(_g_logger,file_path)
+    lmt_file.save_cur_file_line_cnt(_g_runner_self,file_path)
     return True
 
 #///////////////////////////////////////////////////////////////////////////////
 # lmt_memory.py
 #///////////////////////////////////////////////////////////////////////////////
 def make_swap(): 
-    lmt_memory.make_swap(_g_logger) 
+    lmt_memory.make_swap(_g_runner_self) 
     return True
 
 
@@ -293,27 +365,27 @@ def make_swap():
 # lmt_process.py
 #///////////////////////////////////////////////////////////////////////////////
 def run_cli_cmd(cli_cmd):
-    lmt_process.run_cli_cmd(_g_logger,cli_cmd)
+    lmt_process.run_cli_cmd(_g_runner_self,cli_cmd)
     return True
 
 def run_prc(run_cmd):
-    lmt_process.run_prc(_g_logger,run_cmd)
+    lmt_process.run_prc(_g_runner_self,run_cmd)
     return True
 
 def terminate_prc(proc_name):
-    lmt_process.terminate_prc(_g_logger,proc_name)
+    lmt_process.terminate_prc(_g_runner_self,proc_name)
     return True
 
 def kill_prc(proc_name):
-    lmt_process.kill_prc(_g_logger,proc_name)
+    lmt_process.kill_prc(_g_runner_self,proc_name)
     return True
 
 def save_prc_pid(service_name, process_name):
-    lmt_process.save_prc_pid(_g_logger,service_name, process_name)
+    lmt_process.save_prc_pid(_g_runner_self,service_name, process_name)
     return True
 
 def make_hangup(service_name, process_name,  hangup_time_sec):
-    lmt_process.make_hangup(_g_logger,service_name, process_name, hangup_time_sec)
+    lmt_process.make_hangup(_g_runner_self,service_name, process_name, hangup_time_sec)
     return True
 
 
@@ -321,7 +393,7 @@ def make_hangup(service_name, process_name,  hangup_time_sec):
 # lmt_report.py
 #///////////////////////////////////////////////////////////////////////////////
 def write_report_msg (msg):
-    lmt_report.write_report_msg (_g_logger,msg)
+    lmt_report.write_report_msg (_g_runner_self,msg)
     return True
 
 
@@ -329,7 +401,7 @@ def write_report_msg (msg):
 # lmt_simul.py
 #///////////////////////////////////////////////////////////////////////////////
 def send_simul (cdr_dir):
-    lmt_simul.send_simul (_g_logger,cdr_dir)
+    lmt_simul.send_simul (_g_runner_self,cdr_dir)
     return True
 
 
@@ -339,14 +411,14 @@ def send_simul (cdr_dir):
 #정보를 저장하고 다음 명령에서 찾을수 있어야 함
 #TODO 개선 : tspec command 를 해당 모듈의 명령으로 전달만 수행 
 def test_cmd(a,b,c):
-    global _g_logger
+    global _g_runner_self
     global __g_info_repo 
     #self.logger.info("invoked in context ") # error XXX 
-    test_lib.test_1(_g_logger, a,b,c)
+    test_lib.test_1(_g_runner_self, a,b,c)
     __g_info_repo ["val a"] = a
     __g_info_repo ["val b"] = b
     __g_info_repo ["val c"] = c
-    _g_logger.debug("_g_logger test 1") 
+    _g_runner_self.logger.debug("logger test 1") 
     #print(__g_info_repo)
     return True
 
@@ -361,8 +433,6 @@ def test_cmd_remember():
     print("clear repo  : ")
     __g_info_repo = {} 
     print(__g_info_repo ) 
-    global _g_logger
-    _g_logger.debug("_g_logger test 2 ") 
     """
     return True
 

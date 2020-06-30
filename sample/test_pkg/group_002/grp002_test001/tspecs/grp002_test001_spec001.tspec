@@ -1,1 +1,1 @@
-set_cfg('/root/CFG/NMD_Config.xml','222','333')
+set_cfg('COMMON/DB_CONNECT_INFO/USER_ID','333')

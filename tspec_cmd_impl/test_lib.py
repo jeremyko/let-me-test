@@ -10,9 +10,9 @@ from inspect import currentframe, getframeinfo
 #err_msg ="assert failed [{}:{}] : {} != {} ".format(frameinfo.filename, frameinfo.lineno,a,b)
 
 #///////////////////////////////////////////////////////////////////////////////
-def test_1(logger, a,b,c):
+def test_1(runner, a,b,c):
     #print("args = {}, {}, {}".format(a,b,c))
-    logger.debug("logger test : args = {}, {}, {}".format(a,b,c))
+    runner.logger.debug("runner logger test : args = {}, {}, {}".format(a,b,c))
 
 #///////////////////////////////////////////////////////////////////////////////
 def exception_test(a,b):

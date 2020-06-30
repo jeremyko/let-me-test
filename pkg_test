@@ -1,10 +1,6 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
-"""
-test automation framework
-
-"""
 #-------------------------------------------------------------------------------
 import sys
 import os
@@ -47,9 +43,8 @@ def main(argv):
     #pkg_dir = os.path.abspath(os.path.expanduser(os.path.expandvars(argv[1])))
 
     logger = logging.getLogger("auto_tester")
-    logger.setLevel(logging.INFO)
-    logger.setLevel(logging.DEBUG) #TODO from config
-    # DEBUG, INFO, WARNING, ERROR, CRITICAL
+    #XXX 처음은 info level로 시작되고, lmt_runner.py 에서 재설정됨
+    logger.setLevel(logging.INFO) 
     stream_hander = colorlog.StreamHandler()
     stream_hander.setFormatter(colorlog.ColoredFormatter(
 	    '%(log_color)s %(asctime)s %(levelname)8s %(funcName)24s:%(lineno)4d  %(message)s',
@@ -61,13 +56,15 @@ def main(argv):
     if(args.pkg_dir.endswith(os.sep) != True) :
         args.pkg_dir += os.sep
 
-    logger.debug("arg : pkg_dir = {} ".format(args.pkg_dir))
-    logger.debug("run specific test = {} ".format(args.test_id))
 
     start_dtime = datetime.datetime.now()
     logger.info("---------------------------------------------------------")
     logger.info("TEST START {}".format(start_dtime.strftime('%Y-%m-%d %H:%M:%S')))
     logger.info("---------------------------------------------------------")
+
+    logger.info("- pkg_dir = {} ".format(args.pkg_dir))
+    if(args.test_id):
+        logger.info("- run specific test = {} ".format(args.test_id))
 
     try:
         #=================================================
@@ -89,6 +86,8 @@ def main(argv):
         logger.info("TEST END   {} -> ELAPSED SEC ({})".    \
                 format(end_dtime.strftime('%Y-%m-%d %H:%M:%S'),elapsed.total_seconds()))
         logger.info("---------------------------------------------------------")
+        #XXX
+        driver.clean_all() 
     
     return True        
 
