@@ -133,9 +133,9 @@ class PkgTestRunner:
     #==================================================================    
     #remove temp directory : self.__temp_internal_use_only_dir 
     def clean_all(self):
-        self.logger.info("clean all temporary files")
+        self.logger.debug("clean all temporary files")
         if(os.path.isdir(self.__temp_internal_use_only_dir)):
-            self.logger.info("remove internal use only dir : {}".
+            self.logger.debug("remove internal use only dir : {}".
                     format(self.__temp_internal_use_only_dir))
             shutil.rmtree(self.__temp_internal_use_only_dir) #XXX dangerous 
 
@@ -170,8 +170,9 @@ class PkgTestRunner:
                 #-------------------------------------
                 end_dtime = datetime.datetime.now()
                 elapsed = end_dtime - start_dtime
-                self.logger.info("elapsed sec : GROUP [{}] --> {} secs".    \
-                        format(grp_dir_name,elapsed.total_seconds()))
+                self.logger.info(" ")
+                self.logger.info("[PASSED]   {} -> elapsed : {} secs".
+                        format(grp_dir_name, elapsed.total_seconds()))
 
 
     #==================================================================    
@@ -198,7 +199,7 @@ class PkgTestRunner:
 
     #==================================================================    
     def run_tests_per_group(self, grp_dir_name):
-        self.logger.info("[GROUP] : {}".format(grp_dir_name))
+        self.logger.info("[GROUP]    {}".format(grp_dir_name))
         index = 0
         for test_dir_full in self.__test_dirs_per_group_full :
             start_dtime = datetime.datetime.now()
@@ -206,7 +207,7 @@ class PkgTestRunner:
             self.logger.info("  ")
             self.logger.debug("  --> test dir {}".format(test_dir_full))
             #self.logger.info("  [TEST] : {}".format(test_dir_full))
-            self.logger.info("  [TEST] : {}".format(self.__test_dirs_per_group[index]))
+            self.logger.info("    [TEST]    {}".format(self.__test_dirs_per_group[index]))
             tspecs_dir_full = test_dir_full +"/tspecs" # tspec directory path
             if(os.path.isdir(tspecs_dir_full)):
                 tspec_names = os.listdir(tspecs_dir_full) # all tspec path in tspec dir.
@@ -214,17 +215,20 @@ class PkgTestRunner:
                     tspec_names.sort()
                     if(self.run_all_tspecs_per_test(tspecs_dir_full, tspec_names)==True):
                         self.__succeeded_test_cnt += 1
-                        #self.logger.info("  [PASSED] : {}".format(test_dir_full))
-                        self.logger.info("  [PASSED] : {}".format(self.__test_dirs_per_group[index]))
+                        #check elapsed     
+                        end_dtime = datetime.datetime.now()
+                        elapsed = end_dtime - start_dtime
+                        self.logger.info ("    [PASSED]  {} -> elapsed : {} sec".
+                                format(self.__test_dirs_per_group[index],
+                                    elapsed.total_seconds()))
                     else:
-                        #self.logger.error("  [FAILED] : {}".format(test_dir_full))
-                        self.logger.error("  [FAILED] : {}".format(self.__test_dirs_per_group[index]))
                         self.__failed_tests.append(test_dir_full)
-                    #check elapsed     
-                    end_dtime = datetime.datetime.now()
-                    elapsed = end_dtime - start_dtime
-                    self.logger.info("  elapsed sec : TEST [{}] --> {} secs".    \
-                            format(self.__test_dirs_per_group[index],elapsed.total_seconds()))
+                        #check elapsed     
+                        end_dtime = datetime.datetime.now()
+                        elapsed = end_dtime - start_dtime
+                        self.logger.error("    [FAILED]  {} -> elapsed : {} sec".
+                                format(self.__test_dirs_per_group[index],
+                                    elapsed.total_seconds()))
             else:    
                 self.logger.warning("spec dir not exists {}".format(tspecs_dir_full))
 
@@ -236,19 +240,10 @@ class PkgTestRunner:
         self.logger.debug("  [tspec_names] : {}".format(tspec_names))
         for tspec_name in tspec_names:
             if(tspec_name.endswith(self.TSPEC_FILE_EXT)) :
-                try:
-                    start_dtime = datetime.datetime.now()
-                    if (self.run_one_tspec(tspecs_dir_full+os.sep+tspec_name, tspec_name) != True):
-                        #self.logger.error("        [FAILED] : {}".format(tspec_name))
-                        self.logger.error("        [FAILED] ")
-                        self.__failed_test_cnt += 1
-                        return False
-                finally:
-                    #check elapsed     
-                    end_dtime = datetime.datetime.now()
-                    elapsed = end_dtime - start_dtime
-                    self.logger.info("    elapsed sec : TSPEC [{}] --> {} secs".    \
-                            format(tspec_name,elapsed.total_seconds()))
+                if (self.run_one_tspec(tspecs_dir_full+os.sep+tspec_name, tspec_name) != True):
+                    #self.logger.error("        [FAILED] : {}".format(tspec_name))
+                    self.logger.error("        [FAILED] ")
+                    self.__failed_test_cnt += 1
 
         return True
 
@@ -256,10 +251,11 @@ class PkgTestRunner:
     # run tspec file
     #==================================================================    
     def run_one_tspec(self, tspec_path_full, tspec_name):
-        self.logger.info("    [TSPEC] : {}".format(tspec_path_full))
-        #self.logger.info("    [TSPEC] : {}".format(tspec_name))
+
+        self.logger.info("        [TSPEC]   {}".format(tspec_name))
         try:
             #XXX backup config first --> when tspec begins.
+            start_dtime = datetime.datetime.now()
             self.backup_config()
             #exec("self.logger.info('in exec test ')")
             #----------------
@@ -289,8 +285,10 @@ class PkgTestRunner:
             self.logger.debug("auto rollback config") 
             self.rollback_config()
 
-        #self.logger.info("        [PASSED]    : {}".format(tspec_path_full))
-        self.logger.info("    [PASSED]")
+        #check elapsed     
+        end_dtime = datetime.datetime.now()
+        elapsed = end_dtime - start_dtime
+        self.logger.info("        [PASSED]  elapsed : {} sec".format(elapsed.total_seconds()))
         return True
 
 
@@ -320,7 +318,9 @@ class PkgTestRunner:
         self.logger.info("args : {}".format(args))
 
 
+# tspec command 를 해당 모듈의 명령으로 전달만 수행 
 # TODO 좋은 방법?
+
 #///////////////////////////////////////////////////////////////////////////////
 # lmt_time.py
 #///////////////////////////////////////////////////////////////////////////////
@@ -456,8 +456,6 @@ def send_simul (cdr_dir):
 #///////////////////////////////////////////////////////////////////////////////
 # tspec commands bridge 
 #///////////////////////////////////////////////////////////////////////////////
-#정보를 저장하고 다음 명령에서 찾을수 있어야 함
-#TODO 개선 : tspec command 를 해당 모듈의 명령으로 전달만 수행 
 def test_cmd(a,b,c):
     global _g_runner_self
     global __g_info_repo 

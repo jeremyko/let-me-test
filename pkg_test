@@ -83,7 +83,7 @@ def main(argv):
         end_dtime = datetime.datetime.now()
         elapsed = end_dtime - start_dtime
         logger.info("---------------------------------------------------------")
-        logger.info("TEST END   {} -> elapsed {} sec".    \
+        logger.info("TEST END   {} -> elapsed : {} sec".    \
                 format(end_dtime.strftime('%Y-%m-%d %H:%M:%S'),elapsed.total_seconds()))
         logger.info("---------------------------------------------------------")
         #XXX
