@@ -5,19 +5,22 @@ xml config handling
 from core import lmt_exception
 import xml.etree.ElementTree as ET
 
-#TODO backup config first --> when tspec begins.
-#TODO auto rollback       --> when tspec file ends..
-#TODO manual rollback     --> user 
-
+#///////////////////////////////////////////////////////////////////////////////
+# auto backup      --> when one tspec begins.
+# auto rollback    --> when one tspec ends..
+# manual rollback  --> user 
 #///////////////////////////////////////////////////////////////////////////////
 def set_cfg(runner, xpath, val):
-    runner.logger.info("xpath = {}".format(xpath))
+    runner.logger.debug("xml_cfg_path = {}".format(runner.xml_cfg_path))
+    runner.logger.debug("xpath = {}".format(xpath))
     try:
-        doc = ET.parse('/root/CFG/NMD_Config.xml')
+        doc = ET.parse(runner.xml_cfg_path)
+        #doc = ET.parse("error.xml")
+
     except Exception as e:
-        err_msg = 'exception : {} :{}'.format(e.__doc__, e.message)
-        runner.logger.error("parse failed = {}".format(err_msg))
-        return False
+        err_msg = 'xml parse failed {} :{}'.format(e.__doc__, e.message)
+        runner.logger.error("{}".format(err_msg))
+        raise lmt_exception.LmtException(err_msg)
 
     if(doc == None):
         runner.logger.error("parse failed ")
@@ -26,12 +29,13 @@ def set_cfg(runner, xpath, val):
     try:
         xml_root = doc.getroot()
         if(xml_root == None):
-            runner.logger.error("getroot failed ")
-            return False
+            err_msg = "xml getroot failed"
+            runner.logger.error(err_msg)
+            raise lmt_exception.LmtException(err_msg)
     except Exception as e:
-        err_msg = 'exception : {} :{}'.format(e.__doc__, e.message)
-        runner.logger.error("getroot failed = {}".format(err_msg))
-        return False
+        err_msg = 'xml getroot failed : {} :{}'.format(e.__doc__, e.message)
+        runner.logger.error("{}".format(err_msg))
+        raise lmt_exception.LmtException(err_msg)
 
     tmp_xpath =  './' + xpath # root + xpath
     #tmp_xpath = './/' + 'DB_CONNECT_INFO/USER_ID' # OK
@@ -40,19 +44,34 @@ def set_cfg(runner, xpath, val):
     try:
         xml_nodes = xml_root.findall(tmp_xpath)
         if xml_nodes == None:
-            runner.logger.error("findall failed = {}".format(tmp_xpath))
-            return False
+            err_msg = "findall failed = {}".format(tmp_xpath)
+            runner.logger.error("{}".format(tmp_xpath))
+            raise lmt_exception.LmtException(err_msg)
+        if len(xml_nodes) == 0:
+            err_msg = "invalid xpath = {}".format(tmp_xpath)
+            runner.logger.error("{}".format(err_msg))
+            raise lmt_exception.LmtException(err_msg)
+
         #print xml_nodes
         config_val = xml_nodes[0].text
-        runner.logger.debug("config_val = {}".format(config_val))
+        runner.logger.debug("before = {}".format(config_val))
+        #------------------------
+        # XXX change value XXX 
+        xml_nodes[0].text = val
+        #------------------------
+
+        #last_updated = ET.SubElement(xml_nodes[0], "test_new")
+        #last_updated.text = 'TEST'
+
+        #write file
+        doc.write(runner.xml_cfg_path, encoding="utf-8", xml_declaration=True)
     except Exception as e:
-        err_msg = 'exception : {} :{}'.format(e.__doc__, e.message)
-        runner.logger.error("findall failed = {}".format(err_msg))
-        return False
+        err_msg = 'error : {} :{}'.format(e.__doc__, e.message)
+        runner.logger.error("{}".format(err_msg))
+        raise
     except (SyntaxError, AttributeError):
         err_msg = 'Syntax or Attribute error '
-        runner.logger.error("findall failed = {}".format(err_msg))
-        print err_msg
-        return False
+        runner.logger.error("{}".format(err_msg))
+        raise
 
     return True

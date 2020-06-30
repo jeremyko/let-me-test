@@ -2,6 +2,7 @@
 
 import sys
 import os
+import datetime
 import subprocess
 import traceback
 import configparser
@@ -22,14 +23,16 @@ class PkgTestRunner:
     __group_dirs_full = [] # full path
     __test_dirs_per_group      = []
     __test_dirs_per_group_full = []
+    __total_test_cnt  = 0
     __failed_tests = []
     __failed_test_cnt = 0 
     __succeeded_test_cnt = 0
-    __xml_cfg_path = None
     __temp_internal_use_only_dir = None
     __package_name = None
     __system_name  = None
     __log_level    = None
+
+    xml_cfg_path = None
 
     PKG_CFG_NAME     ='per_pkg.ini'
     TSPEC_FILE_EXT   ='.tspec'
@@ -42,6 +45,7 @@ class PkgTestRunner:
         __test_dirs_per_group      = []
         __test_dirs_per_group_full = []
         __args = None
+        __total_test_cnt = 0
         __failed_tests    = []
         __failed_test_cnt = 0 
         __succeeded_test_cnt = 0
@@ -55,6 +59,7 @@ class PkgTestRunner:
         _g_runner_self = self
 
     #==================================================================    
+    # run test 
     #==================================================================    
     def run_test(self):
         self.read_pkg_ini()
@@ -72,17 +77,23 @@ class PkgTestRunner:
             self.run_groups()
 
             if(self.__failed_test_cnt >0 ):
-                self.logger.info    ("TOTAL {} TEST OK".format(self.__succeeded_test_cnt))
-                self.logger.critical("TOTAL {} TEST FAILED".format(self.__failed_test_cnt))
+                self.logger.info("---------------------------------------------------------")
+                self.logger.info    ("TOTAL {} TEST".
+                        format(self.__total_test_cnt))
+                self.logger.info    ("      {} OK".
+                        format(self.__succeeded_test_cnt))
+                self.logger.critical("      {} FAILED".
+                        format(self.__failed_test_cnt))
+
                 for failed in self.__failed_tests :
-                    self.logger.critical(" -> {}".format(failed))
+                    self.logger.critical("        failed test : {}".format(failed))
                 return False
         else:            
             err_msg ="invalid pkg dir {}".format(__args.pkg_dir)
             self.logger.error(err_msg)
             return False
 
-        self.logger.info(" ")
+        self.logger.info("---------------------------------------------------------")
         self.logger.info("TOTAL {} TEST OK".format(self.__succeeded_test_cnt))
         return True
 
@@ -90,16 +101,17 @@ class PkgTestRunner:
     def read_pkg_ini(self):
         # read per_pkg.ini, pkg_dir ends with os.sep
         self.__ini_config.read(self.__args.pkg_dir+self.PKG_CFG_NAME)
-        self.__xml_cfg_path = self.__ini_config['COMMON']['CONFIG_PATH']
+        self.xml_cfg_path = self.__ini_config['COMMON']['CONFIG_PATH']
         self.__package_name = self.__ini_config['COMMON']['PACKAGE_NAME']
         self.__system_name  = self.__ini_config['COMMON']['SYSTEM_NAME']
         self.__log_level    = self.__ini_config['LOG']['LOG_LEVEL']
         self.__temp_internal_use_only_dir = self.__args.pkg_dir + 'do_not_delete_internal_use'
-        self.logger.info("- xml_cfg_path = {}".format(self.__xml_cfg_path))
+        self.logger.info("- xml_cfg_path = {}".format(self.xml_cfg_path))
         self.logger.info("- package_name = {}".format(self.__package_name))
         self.logger.info("- system_name  = {}".format(self.__system_name ))
         self.logger.info("- log_level    = {}".format(self.__log_level   ))
-        self.logger.info("- temp_internal_use_only_dir = {}".format(self.__temp_internal_use_only_dir))
+        self.logger.info("- temp_internal_use_only_dir = {}".
+                format(self.__temp_internal_use_only_dir))
 
     #==================================================================    
     def set_log_level(self):
@@ -119,13 +131,14 @@ class PkgTestRunner:
             self.logger.setLevel(logging.INFO) 
 
     #==================================================================    
-    #TODO -> remove directory : self.__temp_internal_use_only_dir 
+    #remove temp directory : self.__temp_internal_use_only_dir 
     def clean_all(self):
         self.logger.info("clean all temporary files")
         if(os.path.isdir(self.__temp_internal_use_only_dir)):
-            self.logger.info("remove internal use only dir : {}".format(self.__temp_internal_use_only_dir))
-            #os.rmdir(self.__temp_internal_use_only_dir)
+            self.logger.info("remove internal use only dir : {}".
+                    format(self.__temp_internal_use_only_dir))
             shutil.rmtree(self.__temp_internal_use_only_dir) #XXX dangerous 
+
         return True
 
     #==================================================================    
@@ -151,7 +164,14 @@ class PkgTestRunner:
             index += 1    
 
             if(self.__test_dirs_per_group_full):
+                start_dtime = datetime.datetime.now()
+                #-------------------------------------
                 self.run_tests_per_group(grp_dir_name)
+                #-------------------------------------
+                end_dtime = datetime.datetime.now()
+                elapsed = end_dtime - start_dtime
+                self.logger.info("elapsed sec : GROUP [{}] --> {} secs".    \
+                        format(grp_dir_name,elapsed.total_seconds()))
 
 
     #==================================================================    
@@ -175,11 +195,14 @@ class PkgTestRunner:
                 self.__test_dirs_per_group_full.append(group_dir_full+os.sep+test_dir_name)
                 self.__test_dirs_per_group.append(test_dir_name)
 
+
     #==================================================================    
     def run_tests_per_group(self, grp_dir_name):
         self.logger.info("[GROUP] : {}".format(grp_dir_name))
         index = 0
         for test_dir_full in self.__test_dirs_per_group_full :
+            start_dtime = datetime.datetime.now()
+            self.__total_test_cnt += 1
             self.logger.info("  ")
             self.logger.debug("  --> test dir {}".format(test_dir_full))
             #self.logger.info("  [TEST] : {}".format(test_dir_full))
@@ -197,6 +220,11 @@ class PkgTestRunner:
                         #self.logger.error("  [FAILED] : {}".format(test_dir_full))
                         self.logger.error("  [FAILED] : {}".format(self.__test_dirs_per_group[index]))
                         self.__failed_tests.append(test_dir_full)
+                    #check elapsed     
+                    end_dtime = datetime.datetime.now()
+                    elapsed = end_dtime - start_dtime
+                    self.logger.info("  elapsed sec : TEST [{}] --> {} secs".    \
+                            format(self.__test_dirs_per_group[index],elapsed.total_seconds()))
             else:    
                 self.logger.warning("spec dir not exists {}".format(tspecs_dir_full))
 
@@ -208,11 +236,20 @@ class PkgTestRunner:
         self.logger.debug("  [tspec_names] : {}".format(tspec_names))
         for tspec_name in tspec_names:
             if(tspec_name.endswith(self.TSPEC_FILE_EXT)) :
-                if (self.run_one_tspec(tspecs_dir_full+os.sep+tspec_name, tspec_name) != True):
-                    #self.logger.error("        [FAILED] : {}".format(tspec_name))
-                    self.logger.error("        [FAILED] ")
-                    self.__failed_test_cnt += 1
-                    return False
+                try:
+                    start_dtime = datetime.datetime.now()
+                    if (self.run_one_tspec(tspecs_dir_full+os.sep+tspec_name, tspec_name) != True):
+                        #self.logger.error("        [FAILED] : {}".format(tspec_name))
+                        self.logger.error("        [FAILED] ")
+                        self.__failed_test_cnt += 1
+                        return False
+                finally:
+                    #check elapsed     
+                    end_dtime = datetime.datetime.now()
+                    elapsed = end_dtime - start_dtime
+                    self.logger.info("    elapsed sec : TSPEC [{}] --> {} secs".    \
+                            format(tspec_name,elapsed.total_seconds()))
+
         return True
 
     #==================================================================    
@@ -249,6 +286,7 @@ class PkgTestRunner:
             return False
         finally:
             #XXX auto rollback       --> when tspec file ends..
+            self.logger.debug("auto rollback config") 
             self.rollback_config()
 
         #self.logger.info("        [PASSED]    : {}".format(tspec_path_full))
@@ -258,15 +296,25 @@ class PkgTestRunner:
 
     #==================================================================    
     def backup_config(self):
-        #TODO
-        self.logger.debug("backup config start")
+        src  = self.xml_cfg_path
+        file_name = os.path.basename(self.xml_cfg_path)
+        dest = os.path.join(self.__temp_internal_use_only_dir, file_name )
+        self.logger.debug("backup config : src  ={}".format(src))
+        self.logger.debug("backup config : dest ={}".format(dest))
+        shutil.copyfile(src, dest)
         return True
 
     #==================================================================    
     def rollback_config(self):
-        #TODO
-        self.logger.debug("rollback config")
+        #self.logger.debug("rollback config")
+        file_name = os.path.basename(self.xml_cfg_path)
+        src  = os.path.join(self.__temp_internal_use_only_dir, file_name )
+        dest = self.xml_cfg_path
+        self.logger.debug("rollback config : src  ={}".format(src))
+        self.logger.debug("rollback config : dest ={}".format(dest))
+        shutil.copyfile(src, dest)
         return True
+
     #==================================================================    
     def just_test_func(self, args):
         self.logger.info("args : {}".format(args))
