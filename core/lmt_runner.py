@@ -12,7 +12,7 @@ import logging
 from tspec_cmd_impl import *
 from core import *
 
-__g_info_repo = {}
+#__g_info_repo = {}
 _g_runner_self  = None # XXX
 
 #///////////////////////////////////////////////////////////////////////////////
@@ -38,6 +38,7 @@ class PkgTestRunner:
     pfnm_userid  = None
     pfnm_passwd  = None
     cli_name     = None
+    log_base_path= None
 
     PKG_CFG_NAME     ='per_pkg.ini'
     TSPEC_FILE_EXT   ='.tspec'
@@ -54,6 +55,7 @@ class PkgTestRunner:
         __failed_tests    = []
         __failed_test_cnt = 0 
         __succeeded_test_cnt = 0
+        info_repo = {}
 
     #==================================================================    
     def __init__(self,logger,args):
@@ -113,6 +115,7 @@ class PkgTestRunner:
         self.cli_name    = self.__ini_config['COMMON']['CLI_NAME']
 
         self.__log_level    = self.__ini_config['LOG']['LOG_LEVEL']
+        self.log_base_path  = self.__ini_config['LOG']['LOG_BASE_PATH']
 
         self.pfnm_userid  = self.__ini_config['PFNM']['USER']
         self.pfnm_passwd  = self.__ini_config['PFNM']['PASSWD']
@@ -123,6 +126,7 @@ class PkgTestRunner:
         self.logger.info("- system_name  [{}]".format(self.system_name ))
         self.logger.info("- cli_name     [{}]".format(self.cli_name ))
         self.logger.info("- log_level    [{}]".format(self.__log_level   ))
+        self.logger.info("- log_base_path[{}]".format(self.log_base_path ))
 
         self.__temp_internal_use_only_dir = self.__args.pkg_dir + 'do_not_delete_internal_use'
         self.logger.debug("- internal_use_only_dir [{}]".
@@ -480,6 +484,7 @@ def send_simul (cdr_dir):
 # tspec commands bridge 
 #///////////////////////////////////////////////////////////////////////////////
 def test_cmd(a,b,c):
+    """
     global _g_runner_self
     global __g_info_repo 
     #self.logger.info("invoked in context ") # error XXX 
@@ -489,6 +494,7 @@ def test_cmd(a,b,c):
     __g_info_repo ["val c"] = c
     _g_runner_self.logger.debug("logger test 1") 
     #print(__g_info_repo)
+    """
     return True
 
 def exception_test(a,b):

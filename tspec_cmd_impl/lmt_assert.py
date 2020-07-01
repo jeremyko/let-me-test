@@ -1,4 +1,9 @@
+#-*- coding: utf-8 -*-
+
+import subprocess
+
 from core import lmt_exception
+from core import lmt_util
 
 #///////////////////////////////////////////////////////////////////////////////
 def test_eq(runner_ctx,a,b):
@@ -16,7 +21,25 @@ def assert_prc_running(runner_ctx,proc_name):
     return True
 
 #///////////////////////////////////////////////////////////////////////////////
+# ex) assert_file_grep("redis_pipeline_threshold_ [30]", "/GTP_SMF/FMS01_1.${CUR_YYYYMMDD}"):
 def assert_file_grep(runner_ctx,to_find_str, file_path):
+
+    #runner_ctx.log_base_path ends with os.sep
+    file_path = lmt_util.replace_all_symbols(runner_ctx,file_path)
+    tmp_file_path = runner_ctx.log_base_path + file_path
+    saved_line_cnt = runner_ctx.info_repo['line_cnt'] 
+    #get 증가한_라인수
+    now_line_cnt = int(subprocess.check_output(['wc', '-l', tmp_file_path]).split()[0])
+    diff_cnt = now_line_cnt - saved_line_cnt
+    runner_ctx.logger.debug("file_path [{}], saved_line_cnt ={}, now cnt ={}, diff ={}".
+            format(tmp_file_path, saved_line_cnt, now_line_cnt, diff_cnt))
+    # tail -n 증가한_라인수 file | grep …
+    # TODO https://github.com/pysys-test/pysys-test/blob/master/pysys/utils/filegrep.py
+    # tail -72  /LOG/GTP_SMF/FMS01_1.20200701 | fgrep "redis_pipeline_threshold_ [30]"
+    # TODO check "$?" 
+    cmd = 'tail -{} {} | fgrep "{}"'.format(diff_cnt, tmp_file_path, to_find_str)
+    lmt_util.run_shell_cmd(runner_ctx,cmd)
+
     return True
 
 #///////////////////////////////////////////////////////////////////////////////

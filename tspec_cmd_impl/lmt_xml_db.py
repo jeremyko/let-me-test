@@ -4,7 +4,12 @@ xml db handling
 """
 import os
 from core import lmt_exception
-import xml.etree.ElementTree as ET
+#import xml.etree.ElementTree as ET
+try:
+    import xml.etree.cElementTree as ET
+except ImportError:
+    print "ImportError"
+    import xml.etree.ElementTree as ET
 
 """
 <ROWSET>

@@ -1,14 +1,13 @@
-#from core import lmt_exception
-#import os
-#import subprocess
-from core import lmt_util
+
+from core import lmt_exception
+import os
+import datetime
+import subprocess
 
 #///////////////////////////////////////////////////////////////////////////////
 def run_shell_cmd(runner_ctx,cmd):
 
-    lmt_util.run_shell_cmd(runner_ctx,cmd)
-
-    """
+    runner_ctx.logger.info("cmd : {}".format(cmd))
     proc = subprocess.Popen(cmd, shell=True,stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output,err = proc.communicate()
 
@@ -27,19 +26,16 @@ def run_shell_cmd(runner_ctx,cmd):
     #succeeded
     if(output):
         runner_ctx.logger.info("------- output START ----------------------")
-        runner_ctx.logger.info("result : {}".format(output))
+        runner_ctx.logger.info("\n{}".format(output))
         runner_ctx.logger.info("------- output END   ----------------------")
-    return True
-    """
 
+    return True
 
 #///////////////////////////////////////////////////////////////////////////////
-"""     
-#python3
-out, err = proc.communicate(timeout=10)
-except subprocess.TimeoutExpired:
-    proc.terminate()
-    proc.wait()
-    err_msg ="cmd failed : timeout : {}".format(cmd)
-    raise lmt_exception.LmtException(err_msg)
-"""    
+def replace_all_symbols(runner_ctx, user_str):
+    today = datetime.datetime.now().strftime('%Y%m%d')
+    resolved = user_str.replace("${PACKAGE_NAME}", runner_ctx.package_name)
+    resolved = resolved.replace("${SYSTEM_NAME}" , runner_ctx.system_name)
+    resolved = resolved.replace("${CUR_YYYYMMDD}", today)
+    runner_ctx.logger.debug("resolved : {}".format(resolved))
+    return resolved

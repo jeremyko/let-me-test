@@ -1,9 +1,17 @@
 
+run_shell_cmd("ls -al")
+
 #set_xml_cfg("APPLICATION/FM/REDIS_PIPELINE_THRESHOLD_CNT",  "30")
 """
 set_xml_db(" T_DATA_FORMAT ", " ALLOW_SPACE ", " Y ", 
         SERVICE_ID='000009', DATA_NAME='SOFCS_CMP_META', 
         STRUCTURE_CD='1', FIELD_NAME='ofcs_error_code')
+"""
+
+"""
+set_xml_db('T_KOJH_ERR ', ' ALLOW_SPACE', 'TEST_XXX', 
+        SERVICE_ID='000007', DATA_NAME='GTP_PGW_META',
+        STRUCTURE_CD='0',FIELD_NAME='TestField')
 """
 
 set_xml_db('T_KOJH ', ' ALLOW_SPACE', 'TEST_XXX', 

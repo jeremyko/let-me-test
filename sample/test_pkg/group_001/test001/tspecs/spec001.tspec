@@ -1,24 +1,29 @@
-# description : test
-# self.logger.info("invoked in context ")  
-test_cmd ("11","22",33)
-test_cmd_remember()
-#wait_secs(1)    
-test_eq(1,1)
-#test_eq(1,2)
-test_eq('1','1')
-save_prc_pid('GTP_SMF', 'FMS01')
-assert_prc_same_pid('GTP_SMF', 'FMS01')
+#-*- coding: utf-8 -*-
 
-run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_SMF")
-wait_secs(5)
-run_cli_cmd("DISP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_SMF")
-run_cli_cmd("STAR-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_SMF")
-wait_secs(5)
-run_cli_cmd("DISP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_SMF")
-run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_SMF")
-run_cli_cmd("DISP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_SMF")
+# 테스트 시나리오 ...
 
-#run_shell_cmd("ls -al")
-run_shell_cmd("ls ")
-#run_shell_cmd("ls -??? ")
+# xml 설정파일 변경 (FM)
+set_xml_cfg("APPLICATION/FM/REDIS_PIPELINE_THRESHOLD_CNT",  "30")
+
+# cli 명령 수행
+run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_SMF")
+
+# 일정 시간 대기
+wait_secs(5)
+
+# 먼저, 현재 로그 파일 라인수를 저장 (이후 grep 위함)
+#save_cur_file_line_cnt ("GTP_SMF/FMS01_1.20200701")
+save_cur_file_line_cnt ("GTP_SMF/FMS01_1.${CUR_YYYYMMDD}")
+
+# FMS01 재기동    
+#run_cli_cmd("DISP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_SMF")
+
+run_cli_cmd("STAR-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_SMF:FM:FMS01")
+
+run_cli_cmd("DISP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_SMF:FM:FMS01")
+
+# FM 로그 파일에서 설정이 정상적으로 반영되었는지 grep 해본다 
+#assert_file_grep("redis_pipeline_threshold_ [30]", "/GTP_SMF/FMS01_1.20200701"):
+assert_file_grep("redis_pipeline_threshold_ [30]", "GTP_SMF/FMS01_1.${CUR_YYYYMMDD}")
+
 
