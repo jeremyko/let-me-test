@@ -36,6 +36,7 @@ class PkgTestRunner:
     xml_cfg_path = None
     pfnm_userid  = None
     pfnm_passwd  = None
+    cli_name     = None
 
     PKG_CFG_NAME     ='per_pkg.ini'
     TSPEC_FILE_EXT   ='.tspec'
@@ -105,18 +106,23 @@ class PkgTestRunner:
         # read per_pkg.ini, pkg_dir ends with os.sep
         self.__ini_config.read(self.__args.pkg_dir+self.PKG_CFG_NAME)
         self.xml_cfg_path = self.__ini_config['COMMON']['CONFIG_PATH']
-        self.pfnm_userid  = self.__ini_config['PFNM']['USER']
-        self.pfnm_passwd  = self.__ini_config['PFNM']['PASSWD']
         self.package_name = self.__ini_config['COMMON']['PACKAGE_NAME']
         self.system_name  = self.__ini_config['COMMON']['SYSTEM_NAME']
-        self.__log_level    = self.__ini_config['LOG']['LOG_LEVEL']
-        self.__temp_internal_use_only_dir = self.__args.pkg_dir + 'do_not_delete_internal_use'
+        self.cli_name    = self.__ini_config['COMMON']['CLI_NAME']
 
-        self.logger.info("- xml_cfg_path = {}".format(self.xml_cfg_path))
-        self.logger.info("- package_name = {}".format(self.package_name))
-        self.logger.info("- system_name  = {}".format(self.system_name ))
-        self.logger.info("- log_level    = {}".format(self.__log_level   ))
-        self.logger.info("- temp_internal_use_only_dir = {}".
+        self.__log_level    = self.__ini_config['LOG']['LOG_LEVEL']
+
+        self.pfnm_userid  = self.__ini_config['PFNM']['USER']
+        self.pfnm_passwd  = self.__ini_config['PFNM']['PASSWD']
+
+        self.logger.info("- xml_cfg_path [{}]".format(self.xml_cfg_path))
+        self.logger.info("- package_name [{}]".format(self.package_name))
+        self.logger.info("- system_name  [{}]".format(self.system_name ))
+        self.logger.info("- cli_name     [{}]".format(self.cli_name ))
+        self.logger.info("- log_level    [{}]".format(self.__log_level   ))
+
+        self.__temp_internal_use_only_dir = self.__args.pkg_dir + 'do_not_delete_internal_use'
+        self.logger.debug("- internal_use_only_dir [{}]".
                 format(self.__temp_internal_use_only_dir))
 
     #==================================================================    
@@ -177,7 +183,11 @@ class PkgTestRunner:
                 end_dtime = datetime.datetime.now()
                 elapsed = end_dtime - start_dtime
                 self.logger.info(" ")
-                self.logger.info("[PASSED]   {} -> elapsed : {} secs".
+                if(len(self.__failed_tests)>0):
+                    self.logger.error("[FAILED]   {} -> elapsed : {} secs".
+                        format(grp_dir_name, elapsed.total_seconds()))
+                else:    
+                    self.logger.info("[PASSED]   {} -> elapsed : {} secs".
                         format(grp_dir_name, elapsed.total_seconds()))
 
 
