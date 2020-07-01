@@ -28,12 +28,13 @@ class PkgTestRunner:
     __failed_test_cnt = 0 
     __succeeded_test_cnt = 0
     __temp_internal_use_only_dir = None
-    package_name = None
-    system_name  = None
     __log_level    = None
 
     info_repo = {}
+    package_name = None
+    system_name  = None
     xml_cfg_path = None
+    xml_db_path  = None
     pfnm_userid  = None
     pfnm_passwd  = None
     cli_name     = None
@@ -106,6 +107,7 @@ class PkgTestRunner:
         # read per_pkg.ini, pkg_dir ends with os.sep
         self.__ini_config.read(self.__args.pkg_dir+self.PKG_CFG_NAME)
         self.xml_cfg_path = self.__ini_config['COMMON']['CONFIG_PATH']
+        self.xml_db_path  = self.__ini_config['COMMON']['XML_DB_PATH']
         self.package_name = self.__ini_config['COMMON']['PACKAGE_NAME']
         self.system_name  = self.__ini_config['COMMON']['SYSTEM_NAME']
         self.cli_name    = self.__ini_config['COMMON']['CLI_NAME']
@@ -116,6 +118,7 @@ class PkgTestRunner:
         self.pfnm_passwd  = self.__ini_config['PFNM']['PASSWD']
 
         self.logger.info("- xml_cfg_path [{}]".format(self.xml_cfg_path))
+        self.logger.info("- xml_db_path  [{}]".format(self.xml_db_path))
         self.logger.info("- package_name [{}]".format(self.package_name))
         self.logger.info("- system_name  [{}]".format(self.system_name ))
         self.logger.info("- cli_name     [{}]".format(self.cli_name ))
@@ -273,7 +276,7 @@ class PkgTestRunner:
         try:
             #XXX backup config first --> when tspec begins.
             start_dtime = datetime.datetime.now()
-            self.backup_config()
+            self.backup_config() # TODO 한번만 수행할 방법 ?? xml db 도 ..
             #----------------
             execfile(tspec_path_full)
             #----------------
@@ -289,7 +292,7 @@ class PkgTestRunner:
             del tb
             return False
         except Exception as e:
-            err_msg = '      error : {} :{}'.format(e.__doc__, e.message)
+            err_msg = '      error -> {} : {} :{}'.format(tspec_name,e.__doc__, e.message)
             self.logger.error(err_msg)
             cl, exc, tb = sys.exc_info()
             self.logger.error(traceback.extract_tb(tb))
@@ -303,7 +306,8 @@ class PkgTestRunner:
         #check elapsed     
         end_dtime = datetime.datetime.now()
         elapsed = end_dtime - start_dtime
-        self.logger.info("        [PASSED]  elapsed : {} sec".format(elapsed.total_seconds()))
+        self.logger.info("        [PASSED]  {} : elapsed : {} sec".
+                format(tspec_name,elapsed.total_seconds()))
         return True
 
 
@@ -351,12 +355,16 @@ def run_shell_cmd(cmd):
     #tspec_cmd_impl.run_shell_cmd(_g_runner_self,cmd)
 
 #///////////////////////////////////////////////////////////////////////////////
-# lmt_config.py
+# lmt_xml_config.py
 #///////////////////////////////////////////////////////////////////////////////
-def set_cfg(xpath, val):
-    lmt_config.set_cfg(_g_runner_self, xpath, val)
+def set_xml_cfg(xpath, val):
+    lmt_xml_config.set_xml_cfg(_g_runner_self, xpath, val)
     return True
 
+def set_xml_db(*args, **kwargs): 
+    # table, field, val, kwargs
+    lmt_xml_db.set_xml_db(_g_runner_self, args, kwargs)
+    return True
 
 #///////////////////////////////////////////////////////////////////////////////
 # lmt_assert.py

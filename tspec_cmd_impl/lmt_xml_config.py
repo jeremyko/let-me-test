@@ -8,9 +8,8 @@ import xml.etree.ElementTree as ET
 #///////////////////////////////////////////////////////////////////////////////
 # auto backup      --> when one tspec begins.
 # auto rollback    --> when one tspec ends..
-# manual rollback  --> user 
 #///////////////////////////////////////////////////////////////////////////////
-def set_cfg(runner_ctx, xpath, val):
+def set_xml_cfg(runner_ctx, xpath, val):
     runner_ctx.logger.debug("xml_cfg_path = {}".format(runner_ctx.xml_cfg_path))
     runner_ctx.logger.debug("xpath = {}".format(xpath))
     try:
@@ -75,3 +74,5 @@ def set_cfg(runner_ctx, xpath, val):
         raise
 
     return True
+
+

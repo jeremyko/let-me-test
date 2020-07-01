@@ -23,7 +23,7 @@ def run_cli_cmd(runner_ctx,cli_cmd):
         err_msg ="run cli failed : {} ".format(err)
         raise lmt_exception.LmtException(err_msg)
     elif(proc.returncode != 0): #XXX exit with non 0 -> failed
-        runner_ctx.logger.error("err : {}".format(cli_cmd))
+        runner_ctx.logger.error("err : {} -> exit code : {}".format(cli_cmd,proc.returncode))
         err_msg ="cmd failed : {} -> exit code ={} ".format(cmd,proc.returncode)
         runner_ctx.logger.debug("shell return code = {}".format(proc.returncode))
         if(output):
