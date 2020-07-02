@@ -2,4 +2,7 @@
 
 Test Automation Framework
 
+### run 
+./pkg_test   /root/mydev/let-me-test/sample/test_pkg
+
 
