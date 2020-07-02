@@ -39,6 +39,7 @@ class PkgTestRunner:
     log_base_path= None
     cur_ctx_test_path= None
     is_xml_config_changed = False
+    cur_indent   = None
     info_repo       = {}
     change_xml_dbs  = {} # table_name:is_changed
 
@@ -67,6 +68,7 @@ class PkgTestRunner:
         self.__succeeded_test_cnt = 0
         self.info_repo = {}
         self.change_xml_dbs  = {} 
+        self.cur_indent   = '                  '
 
     #==================================================================    
     # run test 
