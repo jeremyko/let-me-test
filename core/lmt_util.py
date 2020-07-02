@@ -28,8 +28,8 @@ def run_shell_cmd(runner_ctx,cmd):
         runner_ctx.logger.info("------- output START ----------------------")
         runner_ctx.logger.info("\n{}".format(output))
         runner_ctx.logger.info("------- output END   ----------------------")
-
-    return True
+        return output
+    return None
 
 #///////////////////////////////////////////////////////////////////////////////
 def replace_all_symbols(runner_ctx, user_str):
@@ -37,5 +37,6 @@ def replace_all_symbols(runner_ctx, user_str):
     resolved = user_str.replace("${PACKAGE_NAME}", runner_ctx.package_name)
     resolved = resolved.replace("${SYSTEM_NAME}" , runner_ctx.system_name)
     resolved = resolved.replace("${CUR_YYYYMMDD}", today)
+    resolved = resolved.replace("${TEST_DATA_DIR}", runner_ctx.cur_ctx_test_path+os.sep+"data") 
     runner_ctx.logger.debug("resolved : {}".format(resolved))
     return resolved

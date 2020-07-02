@@ -1,9 +1,12 @@
 #-*- coding: utf-8 -*-
+
 """
 xml db handling 
 """
 
 import os
+import shutil
+
 try:
     import xml.etree.cElementTree as ET
 except ImportError:
@@ -11,36 +14,33 @@ except ImportError:
     import xml.etree.ElementTree as ET
 
 from core import lmt_exception
+from core import lmt_util
 
-"""
-<ROWSET>
- <ROW num="376">
-      <SERVICE_ID>000009</SERVICE_ID>
-      <DATA_NAME>SOFCS_CMP_META</DATA_NAME>
-      <STRUCTURE_CD>1</STRUCTURE_CD>
-      <SEQ_NO>26</SEQ_NO>
-      <FIELD_NAME>ofcs_error_code</FIELD_NAME>
-      <FIELD_TYPE>1</FIELD_TYPE>
-      <FIELD_EXT_TYPE>99</FIELD_EXT_TYPE>
-      <FIELD_LENGTH>8</FIELD_LENGTH>
-      <VALUE_CHECK_TYPE>1</VALUE_CHECK_TYPE>
-      <MIN_VALUE>0</MIN_VALUE>
-      <MAX_VALUE>0</MAX_VALUE>
-      <DATE_FORMAT NULL="TRUE"/>
-      <FIELD_KOR_NAME NULL="TRUE"/>
-      <DESCRIPTION NULL="TRUE"/>
-      <ALLOW_SPACE>Y</ALLOW_SPACE>
-      <CHECK_PATTERN NULL="TRUE"/>
-   </ROW>
-</ROWSET>
-"""
 #///////////////////////////////////////////////////////////////////////////////
-def replace_xml_db_table (runner_ctx, src, dest):
-    #TODO
+#    replace_xml_db_file  (테스트로 사용할 파일경로, table명)
+#ex) replace_xml_db_file("${TEST_DATA_DIR}/test_xml_db_files/T_DATA_FORMAT.xml", "T_DATA_FORMAT" )
+#///////////////////////////////////////////////////////////////////////////////
+def replace_xml_db_file (runner_ctx, testing_file_path_full, table_name):
+    testing_file_path_full = lmt_util.replace_all_symbols(runner_ctx,testing_file_path_full)
+    runner_ctx.logger.debug("resolved xml db : {}".format(testing_file_path_full))
+    #파일 교체 전, 백업
+    existing_old_path_full = runner_ctx.xml_db_path + os.sep + table_name +".xml"
+    if(table_name in runner_ctx.change_xml_dbs.keys()) :    
+        # 동일한 xml db table 명으로 set_xml_db 등과 함께 여러번 호출되는 경우 고려.
+        runner_ctx.logger.debug("already backed up..{}".format(table_name+".xml"))
+    else:
+        runner_ctx.change_xml_dbs[table_name] = True
+        runner_ctx.logger.debug("BACKUP xml db {}".format(table_name))
+        runner_ctx.backup_xml_db(existing_old_path_full, table_name) 
+
+    runner_ctx.logger.debug("replace xml db : from ={}".format(testing_file_path_full))
+    runner_ctx.logger.debug("replace xml db : to   ={}".format(existing_old_path_full))
+    #replace file
+    shutil.copyfile(testing_file_path_full, existing_old_path_full)
     return True
 
+
 #///////////////////////////////////////////////////////////////////////////////
-#
 # ex) ofcs_error_code 필드의 ALLOW_SPACE 속성을 Y 로 변경 :
 #    set_xml_db(" T_DATA_FORMAT ", " ALLOW_SPACE ", " Y ", 
 #        SERVICE_ID='000009', 
@@ -49,8 +49,10 @@ def replace_xml_db_table (runner_ctx, src, dest):
 #        FIELD_NAME='ofcs_error_code')
 #///////////////////////////////////////////////////////////////////////////////
 def set_xml_db(runner_ctx, *args):
+
     # arg[0] -> list -> table, attr, val 
     # arg[1] -> dic  -> db where conditions 
+
     for arg in args:
         runner_ctx.logger.debug("{}".format(arg))
     table           = args[0][0].strip()
@@ -58,20 +60,27 @@ def set_xml_db(runner_ctx, *args):
     val             = args[0][2]
     where_conditons = args[1]
 
-    table_path = runner_ctx.xml_db_path + os.sep + table +".xml"
-    attr_field = attr_field.strip()
-    val        = val.strip()
-    runner_ctx.logger.debug("table      [{}]".format(table_path))
+    table_path_full = runner_ctx.xml_db_path + os.sep + table +".xml"
+    attr_field      = attr_field.strip()
+    val             = val.strip()
+    runner_ctx.logger.debug("table      [{}]".format(table_path_full))
     runner_ctx.logger.debug("attr_field [{}]".format(attr_field))
     runner_ctx.logger.debug("val        [{}]".format(val  ))
     all_condition_cnt = len(where_conditons)
     runner_ctx.logger.debug("all_condition_cnt = {}".format(all_condition_cnt))
 
+    if(table in runner_ctx.change_xml_dbs.keys()) :    
+        # 동일한 xml db table 명으로 set_xml_db 이 여러번 호출되는 경우 고려.
+        runner_ctx.logger.debug("already backed up..{}".format(table+".xml"))
+    else:
+        runner_ctx.logger.debug("BACKUP xml db {}".format(table))
+        runner_ctx.backup_xml_db(table_path_full, table) # file 단위 백업
+
     for where_conditon in where_conditons.items():
         runner_ctx.logger.debug("cond : {} = {}".format(where_conditon[0], where_conditon[1]))
 
     try:
-        doc = ET.parse(table_path)
+        doc = ET.parse(table_path_full)
 
     except Exception as e:
         err_msg = 'xml db parse failed {} :{}'.format(e.__doc__, e.message)
@@ -135,8 +144,8 @@ def set_xml_db(runner_ctx, *args):
                 if(db_field_to_change is not None):
                     db_field_to_change.text = val
                     #write file
-                    runner_ctx.logger.debug("write xml db : {}".format(table_path))
-                    doc.write(table_path, encoding="utf-8", xml_declaration=True)
+                    runner_ctx.logger.debug("write xml db : {}".format(table_path_full))
+                    doc.write(table_path_full, encoding="utf-8", xml_declaration=True)
 
     except Exception as e:
         err_msg = 'error : {} :{}'.format(e.__doc__, e.message)

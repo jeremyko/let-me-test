@@ -12,7 +12,6 @@ import logging
 from tspec_cmd_impl import *
 from core import *
 
-#__g_info_repo = {}
 _g_runner_self  = None # XXX
 
 #///////////////////////////////////////////////////////////////////////////////
@@ -30,7 +29,6 @@ class PkgTestRunner:
     __temp_internal_use_only_dir = None
     __log_level    = None
 
-    info_repo = {}
     package_name = None
     system_name  = None
     xml_cfg_path = None
@@ -39,23 +37,14 @@ class PkgTestRunner:
     pfnm_passwd  = None
     cli_name     = None
     log_base_path= None
+    cur_ctx_test_path= None
+    is_xml_config_changed = False
+    info_repo       = {}
+    change_xml_dbs  = {} # table_name:is_changed
 
     PKG_CFG_NAME     ='per_pkg.ini'
     TSPEC_FILE_EXT   ='.tspec'
     GROUP_DIR_PREFIX ='group_'
-
-    #==================================================================    
-    def reset_variables(self):
-        __group_dirs      = [] 
-        __group_dirs_full = [] 
-        __test_dirs_per_group      = []
-        __test_dirs_per_group_full = []
-        __args = None
-        __total_test_cnt = 0
-        __failed_tests    = []
-        __failed_test_cnt = 0 
-        __succeeded_test_cnt = 0
-        info_repo = {}
 
     #==================================================================    
     def __init__(self,logger,args):
@@ -64,6 +53,20 @@ class PkgTestRunner:
         self.__args = args
         global _g_runner_self
         _g_runner_self = self
+
+    #==================================================================    
+    def reset_variables(self):
+        self.cur_ctx_test_path = None
+        self.__group_dirs      = [] 
+        self.__group_dirs_full = [] 
+        self.__test_dirs_per_group      = []
+        self.__test_dirs_per_group_full = []
+        self.__total_test_cnt = 0
+        self.__failed_tests    = []
+        self.__failed_test_cnt = 0 
+        self.__succeeded_test_cnt = 0
+        self.info_repo = {}
+        self.change_xml_dbs  = {} 
 
     #==================================================================    
     # run test 
@@ -77,7 +80,15 @@ class PkgTestRunner:
                     format(self.__temp_internal_use_only_dir))
             os.mkdir(self.__temp_internal_use_only_dir)
 
+        #create result directory 
+        self.__result_base_dir = self.__args.pkg_dir + 'pkg_test_result'
+        if(os.path.isdir(self.__result_base_dir)==False):
+            self.logger.debug("create result dir : {}".
+                    format(self.__result_base_dir))
+            os.mkdir(self.__result_base_dir)
+
         self.set_log_level()
+
         self.get_groups ()
 
         if(self.__group_dirs):
@@ -85,12 +96,9 @@ class PkgTestRunner:
 
             if(self.__failed_test_cnt >0 ):
                 self.logger.info("---------------------------------------------------------")
-                self.logger.info    ("TOTAL {} TEST".
-                        format(self.__total_test_cnt))
-                self.logger.info    ("      {} OK".
-                        format(self.__succeeded_test_cnt))
-                self.logger.critical("      {} FAILED".
-                        format(self.__failed_test_cnt))
+                self.logger.info    ("TOTAL {} TEST".format(self.__total_test_cnt))
+                self.logger.info    ("      {} OK".format(self.__succeeded_test_cnt))
+                self.logger.critical("      {} FAILED".format(self.__failed_test_cnt))
 
                 for failed in self.__failed_tests :
                     self.logger.critical("        failed test : {}".format(failed))
@@ -112,10 +120,10 @@ class PkgTestRunner:
         self.xml_db_path  = self.__ini_config['COMMON']['XML_DB_PATH']
         self.package_name = self.__ini_config['COMMON']['PACKAGE_NAME']
         self.system_name  = self.__ini_config['COMMON']['SYSTEM_NAME']
-        self.cli_name    = self.__ini_config['COMMON']['CLI_NAME']
+        self.cli_name     = self.__ini_config['COMMON']['CLI_NAME']
 
-        self.__log_level    = self.__ini_config['LOG']['LOG_LEVEL']
-        self.log_base_path  = self.__ini_config['LOG']['LOG_BASE_PATH']
+        self.__log_level  = self.__ini_config['LOG']['LOG_LEVEL']
+        self.log_base_path= self.__ini_config['LOG']['LOG_BASE_PATH']
 
         self.pfnm_userid  = self.__ini_config['PFNM']['USER']
         self.pfnm_passwd  = self.__ini_config['PFNM']['PASSWD']
@@ -134,7 +142,6 @@ class PkgTestRunner:
 
     #==================================================================    
     def set_log_level(self):
-        # DEBUG, INFO, WARNING, ERROR, CRITICAL
         #print ("log level is {}".format(self.__log_level))
         if(self.__log_level == 'DEBUG'):
             self.logger.setLevel(logging.DEBUG) 
@@ -225,13 +232,14 @@ class PkgTestRunner:
         self.logger.info("[GROUP]    {}".format(grp_dir_name))
         index = 0
         for test_dir_full in self.__test_dirs_per_group_full :
+            self.cur_ctx_test_path = test_dir_full
             start_dtime = datetime.datetime.now()
             self.__total_test_cnt += 1
             self.logger.info("  ")
             self.logger.debug("  --> test dir {}".format(test_dir_full))
             #self.logger.info("  [TEST] : {}".format(test_dir_full))
             self.logger.info("    [TEST]    {}".format(self.__test_dirs_per_group[index]))
-            tspecs_dir_full = test_dir_full +"/tspecs" # tspec directory path
+            tspecs_dir_full = test_dir_full +os.sep + "tspecs" # tspec directory path
             if(os.path.isdir(tspecs_dir_full)):
                 tspec_names = os.listdir(tspecs_dir_full) # all tspec path in tspec dir.
                 if(tspec_names):
@@ -272,18 +280,19 @@ class PkgTestRunner:
         return True
 
     #==================================================================    
-    # run tspec file
+    # run a tspec file
     #==================================================================    
     def run_one_tspec(self, tspec_path_full, tspec_name):
-
         self.logger.info("        [TSPEC]   {}".format(tspec_name))
         try:
-            #XXX backup config first --> when tspec begins.
+            self.is_xml_config_changed = False
+            self.change_xml_dbs     = {}
+            #XXX backup first --> when tspec begins.
             start_dtime = datetime.datetime.now()
-            self.backup_config() # TODO 한번만 수행할 방법 ?? xml db 도 ..
-            #----------------
+
+            #------------------------
             execfile(tspec_path_full)
-            #----------------
+            #------------------------
 
         except lmt_exception.LmtException as lmt_e:
             err_msg = '      lmt exception : {} '.format(lmt_e)
@@ -304,8 +313,17 @@ class PkgTestRunner:
             return False
         finally:
             #XXX auto rollback       --> when tspec file ends..
-            self.logger.debug("auto rollback config") 
-            self.rollback_config()
+            if(self.is_xml_config_changed == True):
+                # set_xml_cfg 명령이 호출된 경우만 config 원복 
+                self.logger.debug("auto rollback config") 
+                self.is_xml_config_changed = False
+                self.rollback_config()
+
+            if(len(self.change_xml_dbs) >0):
+                # set_xml_db 명령이 호출된 경우만 xml db 원복 
+                self.logger.debug("auto rollback xml_db") 
+                self.rollback_xml_db()
+                self.change_xml_dbs = {}
 
         #check elapsed     
         end_dtime = datetime.datetime.now()
@@ -337,12 +355,35 @@ class PkgTestRunner:
         return True
 
     #==================================================================    
-    def just_test_func(self, args):
-        self.logger.info("args : {}".format(args))
+    def backup_xml_db(self, table_path_full, table_name):
+        self.change_xml_dbs[table_name] = True
+        dest = os.path.join(self.__temp_internal_use_only_dir, table_name)
+        dest += ".xml"
+        self.logger.debug("backup xml db : dest ={}".format(dest))
+        shutil.copyfile(table_path_full, dest)
+        return True
+
+    #==================================================================    
+    def rollback_xml_db(self):
+        self.logger.debug("ROLLBACK xml_db")
+        self.logger.debug("self.change_xml_dbs : len= {}".format(len(self.change_xml_dbs)))
+        for xml_db_file_name in self.change_xml_dbs:
+            xml_db_file_name += ".xml"
+            self.logger.debug("ROLLBACK : {}".format(xml_db_file_name))
+            src  = os.path.join(self.__temp_internal_use_only_dir, xml_db_file_name )
+            dest = os.path.join(self.xml_db_path, xml_db_file_name)
+
+            self.logger.debug("ROLLBACK xml_db : src  ={}".format(src))
+            self.logger.debug("ROLLBACK xml_db : dest ={}".format(dest))
+            shutil.copyfile(src, dest)
+        return True
 
 
-# tspec command 를 해당 모듈의 명령으로 전달만 수행 
-# TODO 좋은 방법?
+#///////////////////////////////////////////////////////////////////////////////
+#///////////////////////////////////////////////////////////////////////////////
+#///////////////////////////////////////////////////////////////////////////////
+# tspec command 를 해당 모듈의 명령으로 전달 
+
 
 #///////////////////////////////////////////////////////////////////////////////
 # lmt_time.py
@@ -363,6 +404,13 @@ def run_shell_cmd(cmd):
 #///////////////////////////////////////////////////////////////////////////////
 def set_xml_cfg(xpath, val):
     lmt_xml_config.set_xml_cfg(_g_runner_self, xpath, val)
+    return True
+
+#///////////////////////////////////////////////////////////////////////////////
+# lmt_xml_db.py
+#///////////////////////////////////////////////////////////////////////////////
+def replace_xml_db_file (testing_file_path_full, table_name):
+    lmt_xml_db.replace_xml_db_file(_g_runner_self, testing_file_path_full, table_name)
     return True
 
 def set_xml_db(*args, **kwargs): 
@@ -486,12 +534,8 @@ def send_simul (cdr_dir):
 def test_cmd(a,b,c):
     """
     global _g_runner_self
-    global __g_info_repo 
     #self.logger.info("invoked in context ") # error XXX 
     test_lib.test_1(_g_runner_self, a,b,c)
-    __g_info_repo ["val a"] = a
-    __g_info_repo ["val b"] = b
-    __g_info_repo ["val c"] = c
     _g_runner_self.logger.debug("logger test 1") 
     #print(__g_info_repo)
     """
@@ -502,11 +546,8 @@ def exception_test(a,b):
 
 def test_cmd_remember():
     """
-    global __g_info_repo 
     print("do you remember : ")
-    print(__g_info_repo ) 
     print("clear repo  : ")
-    __g_info_repo = {} 
     print(__g_info_repo ) 
     """
     return True

@@ -2,27 +2,19 @@
 # 한글 사용시  
 # change FM configuration and verify redis insertion success.
 
+#----------------------------------------------------------------------------
+replace_xml_db_file("${TEST_DATA_DIR}/test_xml_db_files/T_TEST.xml", "T_TEST" )
+
+#----------------------------------------------------------------------------
+set_xml_db('T_TEST ', ' DESCRIPTION', 'TEST_DESC 2', 
+        SERVICE_ID='000007', DATA_NAME='GTP_PGW_META',
+        STRUCTURE_CD='0',FIELD_NAME='TestField2')
 
 """
-set_xml_cfg("APPLICATION/FM/REDIS_PIPELINE_THRESHOLD_CNT",  "30")
-
-run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_SMF:CO:GTP01")
-run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_SMF:FM:FMS01")
-#run_cli_cmd("STAR-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_SMF:FM:FMS01")
-
 save_prc_pid("GTP_SMF",  "FMS01")
-
-save_cur_file_line_cnt("/LOG/GTP_SMF/FMS01_1.${CUR_YYYYMMDD}")
-
 send_simul("${SPEC_DATA}/CDC_TEST_CDR")
-
-wait_secs(3)
-
 assert_prc_same_pid("GTP_SMF", "FMS01")
-
 test_eq_prc_output("redis-cli -p 7001 dbsize", "(integer) 100")
-
-assert_file_grep ("OK GOOD", "/LOG/GTP_SMF/FMS01_1.${CUR_YYYYMMDD}")
 """
 
 # 변경된 설정은 자동으로 원복된다.

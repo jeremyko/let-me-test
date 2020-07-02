@@ -9,7 +9,7 @@ set_xml_cfg("APPLICATION/FM/REDIS_PIPELINE_THRESHOLD_CNT",  "30")
 run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_SMF")
 
 # 일정 시간 대기
-wait_secs(5)
+wait_secs(3)
 
 # 먼저, 현재 로그 파일 라인수를 저장 (이후 grep 위함)
 #save_cur_file_line_cnt ("GTP_SMF/FMS01_1.20200701")
@@ -27,3 +27,4 @@ run_cli_cmd("DISP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_SMF:FM:FMS01")
 assert_file_grep("redis_pipeline_threshold_ [30]", "GTP_SMF/FMS01_1.${CUR_YYYYMMDD}")
 
 
+# 변경된 설정은 자동으로 원복된다.

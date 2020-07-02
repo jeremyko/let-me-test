@@ -1,1 +1,1 @@
-__all__ = ['lmt_exception']
+__all__ = ['lmt_exception','lmt_util']
