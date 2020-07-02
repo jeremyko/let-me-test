@@ -40,7 +40,10 @@ def main(argv):
     """
     args = parser.parse_args()
 
-    #pkg_dir = os.path.abspath(os.path.expanduser(os.path.expandvars(argv[1])))
+    if(args.pkg_dir.endswith(os.sep) != True) :
+        args.pkg_dir += os.sep
+
+    start_dtime = datetime.datetime.now()
 
     logger = logging.getLogger("auto_tester")
     stream_hander = colorlog.StreamHandler()
@@ -55,11 +58,20 @@ def main(argv):
     #XXX 처음은 info level로 시작되고, lmt_runner.py 에서 재설정됨
     logger.setLevel(logging.INFO) 
 
-    if(args.pkg_dir.endswith(os.sep) != True) :
-        args.pkg_dir += os.sep
+    # result file 
+    result_dir_path = args.pkg_dir + "pkg_test_result"
+    if not os.path.exists(result_dir_path):
+        logger.info("create result dir : {}".format(result_dir_path))
+        os.mkdir(result_dir_path)
+
+    # ex) 20200620172022_auto_test_report.txt
+    file_handler = logging.FileHandler('{}/{}_auto_test_report.txt'.
+            format(result_dir_path,start_dtime.strftime('%Y%m%d_%H%M%S') ))
+    logger.addHandler(file_handler)
 
 
-    start_dtime = datetime.datetime.now()
+
+
     logger.info("---------------------------------------------------------")
     logger.info("TEST START {}".format(start_dtime.strftime('%Y-%m-%d %H:%M:%S')))
     logger.info("---------------------------------------------------------")
