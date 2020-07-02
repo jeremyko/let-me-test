@@ -38,9 +38,12 @@ def assert_file_grep(runner_ctx,to_find_str, file_path):
     # tail -증가한_라인수 file | grep …
     # ex) tail -72  /LOG/GTP_SMF/FMS01_1.20200701 | fgrep "redis_pipeline_threshold_ [30]"
     cmd = 'tail -{} {} | fgrep "{}"'.format(diff_cnt, tmp_file_path, to_find_str)
-    lmt_util.run_shell_cmd(runner_ctx,cmd)
+    grep_rslt = lmt_util.run_shell_cmd(runner_ctx,cmd)
+    runner_ctx.logger.info("{}grep file   => {}".format(runner_ctx.cur_indent,tmp_file_path))
+    runner_ctx.logger.info("{}grep output => {}".format(runner_ctx.cur_indent,grep_rslt))
 
     # TODO : file 내용을 result 폴더, test 단위 폴더에 별도로 저장한다.
+    #lmt_util.write_testing_log(runner_ctx,testing_log)
 
     return True
 

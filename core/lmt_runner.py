@@ -68,7 +68,7 @@ class PkgTestRunner:
         self.__succeeded_test_cnt = 0
         self.info_repo = {}
         self.change_xml_dbs  = {} 
-        self.cur_indent   = '                  '
+        self.cur_indent   = '          '
 
     #==================================================================    
     # run test 
@@ -297,17 +297,21 @@ class PkgTestRunner:
             #------------------------
 
         except lmt_exception.LmtException as lmt_e:
-            err_msg = '      lmt exception : {} '.format(lmt_e)
+            err_msg = '{}lmt exception : {} '.format(self.cur_indent,lmt_e)
             self.logger.error(err_msg)
             #traceback.print_exc()
             cl, exc, tb = sys.exc_info()
-            self.logger.error("       - tspec   => {}".format(traceback.extract_tb(tb)[1][0])) 
-            self.logger.error("       - line no => {}".format(traceback.extract_tb(tb)[1][1])) 
-            self.logger.error("       - test    => {}".format(traceback.extract_tb(tb)[1][3]))
+            self.logger.error("{} - tspec   => {}". \
+                    format(self.cur_indent,traceback.extract_tb(tb)[1][0])) 
+            self.logger.error("{} - line no => {}". \
+                    format(self.cur_indent,traceback.extract_tb(tb)[1][1])) 
+            self.logger.error("{} - test    => {}". \
+                    format(self.cur_indent,traceback.extract_tb(tb)[1][3]))
             del tb
             return False
         except Exception as e:
-            err_msg = '      error -> {} : {} :{}'.format(tspec_name,e.__doc__, e.message)
+            err_msg = '{}error -> {} : {} :{}'. \
+                format(self.cur_indent,tspec_name,e.__doc__, e.message)
             self.logger.error(err_msg)
             cl, exc, tb = sys.exc_info()
             self.logger.error(traceback.extract_tb(tb))

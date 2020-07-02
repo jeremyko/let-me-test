@@ -2,8 +2,6 @@
 # 한글 사용시  
 # change FM configuration and verify redis insertion success.
 
-#----------------------------------------------------------------------------
-replace_xml_db_file("${TEST_DATA_DIR}/test_xml_db_files/T_TEST.xml", "T_TEST" )
 
 #----------------------------------------------------------------------------
 set_xml_db('T_TEST ', ' DESCRIPTION', 'TEST_DESC 2', 

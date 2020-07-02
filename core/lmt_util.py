@@ -7,7 +7,7 @@ import subprocess
 #///////////////////////////////////////////////////////////////////////////////
 def run_shell_cmd(runner_ctx,cmd):
 
-    runner_ctx.logger.info("cmd : {}".format(cmd))
+    runner_ctx.logger.info("{}cmd : {}".format(runner_ctx.cur_indent,cmd))
     proc = subprocess.Popen(cmd, shell=True,stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output,err = proc.communicate()
 
@@ -20,14 +20,14 @@ def run_shell_cmd(runner_ctx,cmd):
         err_msg ="cmd failed : {} -> exit code ={} ".format(cmd,proc.returncode)
         runner_ctx.logger.debug("shell return code = {}".format(proc.returncode))
         if(output):
-            err_msg += "\n{}".format(output)
+            err_msg += "\n{}{}".format(runner_ctx.cur_indent,output)
         raise lmt_exception.LmtException(err_msg)
 
     #succeeded
     if(output):
-        runner_ctx.logger.info("------- output START ----------------------")
-        runner_ctx.logger.info("\n{}".format(output))
-        runner_ctx.logger.info("------- output END   ----------------------")
+        runner_ctx.logger.debug("{}{}".format(runner_ctx.cur_indent,"------- output START ----------------------"))
+        runner_ctx.logger.debug("\n{}{}".format(runner_ctx.cur_indent,output))
+        runner_ctx.logger.debug("{}{}".format(runner_ctx.cur_indent,"------- output END   ----------------------"))
         return output
     return None
 
