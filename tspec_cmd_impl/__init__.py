@@ -1,5 +1,13 @@
-__all__ = ['lmt_assert','lmt_cdr','lmt_xml_config','lmt_file','lmt_memory',
-           'lmt_process','lmt_report','lmt_shell','lmt_simul','lmt_time',
+__all__ = ['lmt_assert',
+           'lmt_cdr',
+           'lmt_file',
+           'lmt_memory',
+           'lmt_process',
+           'lmt_report',
+           'lmt_shell',
+           'lmt_simul',
+           'lmt_time',
+           'lmt_xml_config',
            'lmt_xml_db',
            'test_lib']
 
