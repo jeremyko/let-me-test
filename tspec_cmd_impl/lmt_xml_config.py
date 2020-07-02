@@ -2,8 +2,13 @@
 xml config handling 
 """
 
+try:
+    import xml.etree.cElementTree as ET
+except ImportError:
+    print "ImportError"
+    import xml.etree.ElementTree as ET
+
 from core import lmt_exception
-import xml.etree.ElementTree as ET
 
 #///////////////////////////////////////////////////////////////////////////////
 # auto backup      --> when one tspec begins.

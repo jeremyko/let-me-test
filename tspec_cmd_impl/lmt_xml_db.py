@@ -2,14 +2,15 @@
 """
 xml db handling 
 """
+
 import os
-from core import lmt_exception
-#import xml.etree.ElementTree as ET
 try:
     import xml.etree.cElementTree as ET
 except ImportError:
     print "ImportError"
     import xml.etree.ElementTree as ET
+
+from core import lmt_exception
 
 """
 <ROWSET>
@@ -52,19 +53,21 @@ def set_xml_db(runner_ctx, *args):
     # arg[1] -> dic  -> db where conditions 
     for arg in args:
         runner_ctx.logger.debug("{}".format(arg))
-    table = args[0][0].strip()
-    attr_field = args[0][1]
-    val   = args[0][2]
+    table           = args[0][0].strip()
+    attr_field      = args[0][1]
+    val             = args[0][2]
+    where_conditons = args[1]
+
     table_path = runner_ctx.xml_db_path + os.sep + table +".xml"
     attr_field = attr_field.strip()
     val        = val.strip()
     runner_ctx.logger.debug("table      [{}]".format(table_path))
     runner_ctx.logger.debug("attr_field [{}]".format(attr_field))
     runner_ctx.logger.debug("val        [{}]".format(val  ))
-    all_condition_cnt = len(args[1])
+    all_condition_cnt = len(where_conditons)
     runner_ctx.logger.debug("all_condition_cnt = {}".format(all_condition_cnt))
 
-    for where_conditon in args[1].items():
+    for where_conditon in where_conditons.items():
         runner_ctx.logger.debug("cond : {} = {}".format(where_conditon[0], where_conditon[1]))
 
     try:
@@ -108,7 +111,7 @@ def set_xml_db(runner_ctx, *args):
         for db_row in xml_nodes:
             # now, check this one row 
             is_all_condition_met = True
-            for where_conditon in args[1].items():
+            for where_conditon in where_conditons.items():
                 # where_conditon[0] --> field name
                 # where_conditon[1] --> field value 
                 #runner_ctx.logger.debug("cond : {} ".format(where_conditon[0]))

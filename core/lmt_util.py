@@ -20,7 +20,7 @@ def run_shell_cmd(runner_ctx,cmd):
         err_msg ="cmd failed : {} -> exit code ={} ".format(cmd,proc.returncode)
         runner_ctx.logger.debug("shell return code = {}".format(proc.returncode))
         if(output):
-            err_msg += " -> {}".format(output)
+            err_msg += "\n{}".format(output)
         raise lmt_exception.LmtException(err_msg)
 
     #succeeded
