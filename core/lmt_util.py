@@ -15,6 +15,7 @@ def run_shell_cmd(runner_ctx,cmd):
         runner_ctx.logger.error("error : {}".format(cmd))
         err_msg ="{} ".format(err)
         raise lmt_exception.LmtException(err_msg)
+
     elif(proc.returncode != 0): #XXX exit with non 0 -> failed
         runner_ctx.logger.error("error : {}".format(cmd))
         err_msg ="cmd failed : {} -> exit code ={} ".format(cmd,proc.returncode)

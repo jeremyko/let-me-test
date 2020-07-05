@@ -21,9 +21,9 @@ def set_xml_cfg(runner_ctx, xpath, val):
     if(runner_ctx.is_xml_config_changed == False):
         # set_xml_cfg 이 여러번 호출되는 경우 고려.
         # -> 최초로 set_xml_cfg 호출됬을때만 한번 backup 수행 
-        runner_ctx.is_xml_config_changed = True
         runner_ctx.logger.debug("BACKUP xml cfg ")
         runner_ctx.backup_config() 
+        runner_ctx.is_xml_config_changed = True
 
     runner_ctx.logger.debug("xml_cfg_path = {}".format(runner_ctx.xml_cfg_path))
     runner_ctx.logger.debug("xpath = {}".format(xpath))

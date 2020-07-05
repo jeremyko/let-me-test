@@ -308,15 +308,22 @@ class PkgTestRunner:
             self.logger.error("{} - test    => {}". \
                     format(self.cur_indent,traceback.extract_tb(tb)[1][3]))
             del tb
-            return False
+            raise
+            #return False
         except Exception as e:
             err_msg = '{}error -> {} : {} :{}'. \
                 format(self.cur_indent,tspec_name,e.__doc__, e.message)
             self.logger.error(err_msg)
+            """
             cl, exc, tb = sys.exc_info()
-            self.logger.error(traceback.extract_tb(tb))
+            err_stack = traceback.extract_tb(tb)
+            for bt in err_stack:
+                self.logger.error("{}{}".format(self.cur_indent,bt))
+
             del tb
-            return False
+            """
+            raise
+            # return False
         finally:
             #XXX auto rollback       --> when tspec file ends..
             if(self.is_xml_config_changed == True):
