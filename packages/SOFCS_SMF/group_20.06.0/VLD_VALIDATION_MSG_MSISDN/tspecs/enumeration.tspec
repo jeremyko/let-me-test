@@ -1,0 +1,109 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg ("*** VLD_Validation 강화 테스트 시나리오 (Enumeration 데이터 Validation)")
+write_report_msg(" - RuleBaseName 필드는 T_DATA_FORMAT_ELEMENT에 정의된 값을 가져아한다")
+
+#///////////////////////////////////////////////////////////////////////////////
+# DB XML 설정 및 확인 
+write_report_msg("1. Check 조건 확인")
+
+write_report_msg(" - MSISDN 필드를 알람 필드로 설정") 
+write_report_msg("   T_DATA_FORMAT.MSISDN 의 ext type을 FD_EXT_TYPE_VLD_KEY(14) 로 설정")
+
+set_xml_db("T_DATA_FORMAT", 
+           {"FIELD_EXT_TYPE":"14"}, 
+           {"DATA_NAME":"SOFCS_IN_META", "FIELD_NAME":"ServedMSISDN"})
+
+set_xml_db("T_DATA_FORMAT", 
+           {"FIELD_EXT_TYPE":"14"},
+           {"DATA_NAME":"SOFCS_OUT_META", "FIELD_NAME":"ServedMSISDN"})
+
+#-------------------------------------------------------------------------------
+write_report_msg(" - VA에서 validation 체크되도록 설정한다(VA 에서 체크 : SOFCS_OUT_META)") 
+# ST 에서 체크 : SOFCS_IN_META
+#set_xml_db("T_DATA_FORMAT", 
+#           {"VALUE_CHECK_TYPE":"55","ALLOW_SPACE":"N","CHECK_PATTERN":"NoQoS_NoGBR"}, 
+#           {"SERVICE_ID":'000008', "DATA_NAME":"SOFCS_IN_META", "STRUCTURE_CD":"1", "FIELD_NAME":"RuleBaseName"})
+# VA 에서 체크 : SOFCS_OUT_META
+set_xml_db("T_DATA_FORMAT", 
+           {"VALUE_CHECK_TYPE":"55","ALLOW_SPACE":"N","CHECK_PATTERN":"NoQoS_NoGBR"}, 
+           {"SERVICE_ID":"000008", "DATA_NAME":"SOFCS_OUT_META", "STRUCTURE_CD":"1", "FIELD_NAME":"RuleBaseName"})
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("2. T_DATA_FORMAT_ELEMENT.xml 에서 RuleBaseName 필드 확인한다.")
+run_shell_cmd ("xv -s RuleBaseName  ${XML_DB_PATH}/T_DATA_FORMAT_ELEMENT.xml")
+
+write_report_msg(" 다음 항목이 /OPER/XML_FILE/T_DATA_FORMAT_ELEMENT.xml 에 존재해야 알람 1개만 발생됨")
+write_report_msg(" (DATA_NAME => SOFCS_OUT_META")
+write_report_msg(' <ROW num="76"> \n'
+"\t\t\t\t\t\t\t\t\t\t<SERVICE_ID>000008</SERVICE_ID>\n "
+"\t\t\t\t\t\t\t\t\t\t<DATA_NAME>SOFCS_OUT_META</DATA_NAME> \n"
+"\t\t\t\t\t\t\t\t\t\t<STRUCTURE_CD>1</STRUCTURE_CD> \n"
+"\t\t\t\t\t\t\t\t\t\t<SEQ_NO>36</SEQ_NO> \n"
+"\t\t\t\t\t\t\t\t\t\t<FIELD_NAME>RuleBaseName</FIELD_NAME> \n"
+"\t\t\t\t\t\t\t\t\t\t<CHECK_VALUE>NoQoS_NoGBR</CHECK_VALUE> \n"
+"\t\t\t\t\t\t\t\t\t\t<DESCRIPTION>NoQoS_NoGBR....</DESCRIPTION> \n"
+"\t\t\t\t\t\t\t\t\t\t</ROW>")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("3. Sample 데이터를 확인한다.")
+write_report_msg(" - chargingRuleBaseName 필드가 설정된 Element 에 포함되지 않는 에러 데이터 및 정상 판정 데이터가 같이 존재함")
+
+write_report_msg("오류 데이타 (설정된 Element 에 포함되지 않는 데이터 )")
+run_shell_cmd ("ov -f SOFCS_CDR  ${TEST_DATA_DIR}/sample_cdr/55.Element/GTP_PGW11_01_20191119_1107_000136.DAT | grep chargingRuleBaseName | head -5")
+
+write_report_msg("정상 데이타 (설정된 Element 에 모두 포함됨)")
+run_shell_cmd ("ov -f SOFCS_CDR  ${TEST_DATA_DIR}/sample_cdr/55.Element/GTP_PGW11_01_20191119_1107_000137.DAT | grep chargingRuleBaseName | head -5")
+
+write_report_msg("4. VLD log file, OUTPUT IPMD 내 directory 전부 삭제한다")
+remove_app_file_log("VLD*.${CUR_YYYYMMDD}")
+remove_all_ipmd_output_files() #ex) /POFCS/OUTPUT/GTP_PGW/IPMD 내 폴더안 file삭제
+
+#///////////////////////////////////////////////////////////////////////////////
+# STD 프로세스를 재 기동 cli 명령 수행 : 
+# XXX --> INIT 사용하면 안됨. DATA FORMAT 재로딩안됨 !!! XXX
+write_report_msg("5. STD 프로세스를 restart 한다")
+run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:ST") 
+run_cli_cmd("STAR-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:ST") 
+
+#///////////////////////////////////////////////////////////////////////////////
+# VLD 프로세스를 재 기동 cli 명령 수행
+# XXX --> INIT 사용하면 안됨. DATA FORMAT 재로딩안됨 !!! XXX
+write_report_msg("6. VLD 프로세스를 restart 한다")
+run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:VA") 
+run_cli_cmd("STAR-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:VA") 
+
+#///////////////////////////////////////////////////////////////////////////////
+# simul 전송 -> 관련된 설정은 per_pkg.ini 에 존재 
+write_report_msg("7. simul 전송한다")
+send_simul_gtp ("${TEST_DATA_DIR}/sample_cdr/55.Element")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("8. validation 체크로 발생한 alarm(21119055) 을 VLD 로그에서 확인한다(최대10분 대기)")
+assert_file_grep("ALARM CODE : [21119055]", "${LOG_BASE_PATH}/${SERVICE_NAME}/VLD*.${CUR_YYYYMMDD}", 600) 
+write_report_msg("9. 전화번호정보 출력을 확인한다")
+run_shell_cmd(" grep 'MDN:821035515740' ${LOG_BASE_PATH}/${SERVICE_NAME}/VLD*.${CUR_YYYYMMDD}") 
+
+"""
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("9. Error 파일 확인")
+write_report_msg("error cdr 에서 STVLD055 문자열을 찾는다.")
+write_report_msg("   VLD 가 처리할때(CR 에서 timeout 처리될때까지) 까지 최대 10분 대기한다")
+#wait_secs(360) # error 파일 생성 될때까지 여유
+#XXX 정확하게 몇개 지정하면 실패하는경우가 있어서, 그냥 문자열 존재하는것으로 체크
+#assert_eq_cmd_output ("ov -f PGW_META ${OUTPUT_IPMD}/FME*/* | fgrep 'STVLD055'  | wc -l", "2")
+#assert_cmd_output_include_string ("ov -f PGW_META ${OUTPUT_IPMD}/FME*/* | fgrep 'STVLD055'", "STVLD055")
+assert_poll_cmd_output_include_string ("ov -f PGW_META ${OUTPUT_IPMD}/FME*/* | fgrep 'STVLD055'", "STVLD055", 600)
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("10. 정상 파일 확인")
+write_report_msg("정상 output cdr 에서 STVLD055 문자열을 찾는다. 0개가 나와야 한다")
+assert_eq_cmd_output ("ov -f PGW_IPMD ${OUTPUT_IPMD}/FML*/* | fgrep 'STVLD055'  | wc -l", "0")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("11. validation 체크로 발생한 alarm(21119055) 을 T_NFW_ALARM_STATUS 에서 확인한다")
+# table 명과 where 조건에 해당되는 문자열을 넘겨준다. 
+#assert_db_exists("T_NFW_ALARM_STATUS", "CODE='21119055' AND PRC_DATE='${CUR_YYYYMMDD}'")
+"""
+
+

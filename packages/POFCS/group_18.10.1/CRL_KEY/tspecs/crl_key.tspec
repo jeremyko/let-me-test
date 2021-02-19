@@ -1,0 +1,85 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg("=================================================================================")
+
+write_report_msg("SKT_nTels_POFCS_PKG18.10.1_001_CRL_KEY처리오류보완")
+write_report_msg("""
+배경
+- 배경 : CRL 프로세스 과금 세션 구분 강화를 위한 KEY 추가 작업 진행 후 PKG 오류 발생
+- 조치내역 : KEY 설정 원복
+- 원인분석
+CRL 프로세스는 세션 key 값을 ‘256’ 자리로 내부 버퍼 설정 하여 사용 : 추가된 Key 필드에 의한 길이 이슈 없음
+CRL 프로세스는 세션 관리 시 Key 값을 string class 로 관리 : 추가된 Key 필드에 의한 세션 관리 길이 이슈 없음
+CRL 프로세스에서 Output Data 생성 시 ‘세션 key’ 를 활용하여 ID 수록 경우 존재
+- Output Data 는 ‘Header’ 파트와 실 ‘Data’ 파트로 구분
+- ‘Header’ 파트에 ID 항목 존재
+- ‘세션 key’ 를 활용하여 ID 를 수록하는 경우는 input 데이터를 융합 동작 수행 없이 output 으로 보내는 경우
+: 일반적인 과금 융합, Long Call, Short Call, Timeout 등은 해당 안됨
+: CRL 프로세스의 경우, Error Code 가 설정되어 있는 input 데이터의 경우 융합 동작 없이 output 으로 전달 (DNS, SOF 등)
+- Output Data ‘Header’ 파트의 ID 길이는 : 40 자리
+- ‘세션 key’ 길이 : PGW Address, Charging ID, ServedMSISDN -> 40 자리 초과 가능
+- Output Data ‘Header’ 파트 ID 수록 시 길이 확인이 미흡하여, 영역 침범 발생 및 이후 데이터 오류 발생
+"""
+)
+write_report_msg("""1. CRL KEY 설정 항목 확인
+-	추가로 servedMSISDN 을 Key 로 등록된 상태 확인
+""")
+"""
+assert_eq_xml_db_fields("T_DATA_FORMAT_EXT", 
+        {"AGG_KEY_FLAG":"N","CORR_KEY_FLAG":"N","DUP_CHECK_FLAG":"N"}, # 확인할 필드 및 값.
+        {"SERVICE_ID":'000007', # - AND - 조건들
+		"FIELD_NAME":"ServedMSISDN",
+         "GROUP_NAME":"CR_VLD_01", 
+         "DATA_NAME":"GTP_PGW_VLD"})
+"""
+set_xml_db("T_DATA_FORMAT_EXT", 
+        {"AGG_KEY_FLAG":"Y","CORR_KEY_FLAG":"Y","DUP_CHECK_FLAG":"Y"}, 
+        {"SERVICE_ID":"000007", # - AND - 조건들
+		"FIELD_NAME":"ServedMSISDN",
+         "GROUP_NAME":"CR_VLD_01", 
+         "DATA_NAME":"GTP_PGW_VLD"})
+
+assert_eq_xml_db_fields("T_DATA_FORMAT_EXT", 
+        {"AGG_KEY_FLAG":"Y","CORR_KEY_FLAG":"Y","DUP_CHECK_FLAG":"Y"}, # 확인할 필드 및 값.
+        {"SERVICE_ID":'000007', # - AND - 조건들
+		"FIELD_NAME":"ServedMSISDN",
+         "GROUP_NAME":"CR_VLD_01", 
+         "DATA_NAME":"GTP_PGW_VLD"})
+
+write_report_msg("2. 데이타 샘플 확인")
+write_report_msg("""
+- 	CRL 오류 현상 재현 가능한 셈플 PGW-CDR : 10개 PGW-CDR
+-	10개 PGW-CDR (총 81 개 LOS)
+-	DNS 서비스 타입에 의해 PASS 처리 되는 과금 포함
+
+""")
+#run_shell_cmd("ov -f PGW_CDR ${TEST_DATA_DIR}/*DAT | egrep 'chargingID|servedMSISDN|serviceIdentifier'")
+
+write_report_msg("3. CR 프로세스 재기동")
+run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:CR")
+save_prc_pid("GTP_PGW_FT")
+
+remove_app_file_log("CR*.${CUR_YYYYMMDD}")
+remove_all_ipmd_output_files() 
+wait_secs(5)
+run_cli_cmd("STAR-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:CR")
+
+write_report_msg("3. 프로세스 버전 확인")
+run_shell_cmd("disVER ${SERVICE_NAME}")
+
+write_report_msg("4. Simulator 전송")
+send_simul_gtp("${TEST_DATA_DIR}")
+wait_secs(300)
+
+write_report_msg("5. Log 확인")
+run_shell_cmd("tail  ${LOG_BASE_PATH}/${SERVICE_NAME}/CRL*${CUR_YYYYMMDD}")
+#assert_file_grep_sequentially(['MAIN IN\[[ ]*[1-9]+','FDB \[0'], "AGG*${CUR_YYYYMMDD}")
+write_report_msg("6. FT 프로세스 확인")
+assert_prc_same_pid("GTP_PGW_FT")
+
+write_report_msg("7. OUTPUT 확인")
+#run_shell_cmd("find ${OUTPUT_IPMD} -cmin -10 -name 'P*B01' -exec ov -f PGW_IPMD -s 821094783503 {} \;")
+#assert_cmd_output_include_string("find ${OUTPUT_IPMD} -cmin -10 -name 'P*B01' -exec ov -f PGW_IPMD -s 821094783503 {} \;", None)
+#assert_cmd_output_include_string("find ${OUTPUT_IPMD}  -name 'P*B01' -exec ov -f PGW_IPMD -s 821094783503 {} \;", "821094783503")
+assert_cmd_output_include_string("find ${OUTPUT_IPMD}  -cmin -10 -name 'P*B01' -exec ov -f PGW_IPMD -s 821094783503 {} \;", None )
+

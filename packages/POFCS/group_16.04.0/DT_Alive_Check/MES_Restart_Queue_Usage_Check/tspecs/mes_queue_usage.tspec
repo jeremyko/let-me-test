@@ -1,0 +1,29 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg("pfmMES 재기동 시 Domation Socket 비정상 연결 보완")
+write_report_msg("1) pfmMES 재기동 후 정책동기화 결과 수신 및 반영하는지 확인한다. *** 기능 구현 대기 ***")
+write_report_msg("2) pfmMES 재기동 후 FileDB 사용량을 전달하는지 확인한다.")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("판정 기준") 
+write_report_msg("POFCS MES 프로세스 재기동 후 Application에서 발생하는 알람(정책동기화 결과 포함)이 MES를 거쳐 EMS pfmLMS 프로세스로 전달 되는지 확인한다. *** 기능 구현 대기 ***")
+write_report_msg("POFCS MES 프로세스 재기동 후 Application에서 발생하는 FileDB 사용량이 MES로 전달 되는지 확인한다.")
+#///////////////////////////////////////////////
+
+write_report_msg("1. PFNM MES 재기동") 
+run_shell_cmd("pfmStp.sh.test mes")
+wait_secs(10)
+run_shell_cmd("rm ${LOG_BASE_PATH}/PFNM/SVC/MES*.${CUR_YYYYMMDD}")
+run_shell_cmd("pfmRun.sh.test mes")
+wait_secs(30)
+#///////////////////////////////////////////////////////////////////////////////
+
+write_report_msg("2. Simulator 데이타 대량 전송 (시뮬레이터 셋팅 속도 조절 확인 - 250)")
+send_simul_gtp("${TEST_DATA_DIR}")
+wait_secs(5)
+
+#///////////////////////////////////////////////
+write_report_msg("3. 1분 후 MES LOG 확인")
+write_report_msg("* MES 로그를 Polling 하여, Queue 사용율 0.0 이 넘는 로그를 확인한다")
+assert_poll_cmd_output_include_string( "strings ${LOG_BASE_PATH}/PFNM/SVC/MES*.${CUR_YYYYMMDD} | grep queue | tail -1 | awk -F',' '{print $6}' | awk -F'&' '{if($1 > 0.00) print $1}' | wc -l ", "1", max_wait_secs=120)
+write_report_msg("=============== END ============")

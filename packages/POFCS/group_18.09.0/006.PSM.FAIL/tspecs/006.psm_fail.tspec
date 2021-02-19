@@ -1,0 +1,40 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg ("***  SKT_nTels_POFCS_PKG18.09.0_006_PSM_동기화실패보완")
+write_report_msg("""배경
+	PSM 동기화 진행중 특정 POFCS의 FTP 실패로 인해 동기화 실패 발생
+	PSM 에서 발생 시킨 실패 알람이 EMS 모니터링 화면에서 확인되지 않음
+	PSM 의 동기화 이력 조회 결과, 실패가 발생되지 않은 시스템에 대해서 실패 이력으로 기록되는 현상 발생
+""")
+write_report_msg("""	요구사항
+- 동기화 실패 알람 발생 필요
+- 동기화 실패 이력 정확하게 기록 필요
+""")
+put_policy_files_to_ems()
+
+#PSM 동기화 설정을 2분후로 맞추고 PSM 재기동
+psm_set_config_and_restart(2)
+sql = "update T_EMS_XML_FTP_SERVER_INFO set user_id = 'ofcs' where system_id = '3333'"
+execute_sql(sql)
+
+sql = "delete from t_reconfig_sys_result where rcv_time  like '${CUR_YYYYMMDD}%'"
+execute_sql(sql)
+
+sql = "delete from T_NFW_ALARM_STATUS where PROBABLE_CAUSE like '%RECONFIG%'"
+execute_sql(sql)
+
+#여유있게 동기화 끝날 시간으로
+wait_secs(300)
+
+assert_db_exists("t_reconfig_sys_result", "rcv_time like '${CUR_YYYYMMDD}%' and result like '%failed%' and system_name='3333'")
+
+assert_db_exists("T_NFW_ALARM_STATUS", " PROBABLE_CAUSE like '%RECONFIG%'")
+
+
+#원복
+sql = "update T_EMS_XML_FTP_SERVER_INFO set user_id = 'pofcs' where system_id = '3333'"
+execute_sql(sql)
+
+write_report_msg("=============== END ============")
+
+

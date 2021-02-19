@@ -1,0 +1,18 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg("*** PKG_18.09.0 : MES 데이터 전달")
+write_report_msg("*** PKG_18.09.0 : PGW-CDR 필드에 의한 분기")
+write_report_msg("GTP 에 의한 데이터 전송으로 DEC Queue 데이터 추가 확인")
+write_report_msg("MSISDN 에 의해 해당 DEC 로 데이터 전달 확인")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("1.DEC 프로세스 종료")
+run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_PGW:DE")
+write_report_msg("2. Simulator 데이타 전송")
+send_simul_gtp("${TEST_DATA_DIR}")
+wait_secs(30)
+write_report_msg("3. DEC 큐 확인")
+assert_eq_cmd_output ("pfmCLI --userid=admin --password=1 --command=DISP-QUEUE:OFCS:POFCS3:GTP_PGW: | grep DEC01 | awk '{print $8}'", "1")
+wait_secs(5)
+run_cli_cmd("STAR-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_PGW:DE")
+write_report_msg("=============== END ============")

@@ -1,0 +1,22 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg("*** PKG_17.08.1 : STD 종료 시 통계 누락 보완")
+write_report_msg("1) STD 종료 후 통계를 누락없이 처리하는지 확인한다.")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("판정 기준") 
+write_report_msg("POFCS STD 프로세스는 처리된 통계 기록을 누락 없이 기록한다.") 
+
+#///////////////////////////////////////////////////////////////////////////////
+
+write_report_msg("1. Simulator 데이타 전송")
+send_simul_gtp("${TEST_DATA_DIR}")
+wait_secs(10)
+run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_PGW:ST:")
+wait_secs(5)
+write_report_msg("2. STD 통계 확인")
+wait_secs(5)
+assert_eq_cmd_output ("find /OPER/STAT -cmin -1 -name '*STD*' -exec cat {} \; | grep VLD008 | wc -l", "1")
+wait_secs(5)
+run_cli_cmd("STAR-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_PGW:ST:")
+write_report_msg("=============== END ============")

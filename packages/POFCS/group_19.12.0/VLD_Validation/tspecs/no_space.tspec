@@ -1,0 +1,103 @@
+#-*- coding: utf-8 -*-
+write_report_msg ("*** VLD_Validation 강화 테스트 시나리오 (Mandarory필드)")
+
+#TODO 
+# Mandarory 필드, 문자열 길이 Validation 등등 .. sample cdr 들을 한번에 전송하고
+# 한번에 결과를 확인할수 있게 수정..
+
+#///////////////////////////////////////////////////////////////////////////////
+# DB XML 설정 및 확인 
+write_report_msg("1. Mandarory 필드 check 조건 확인")
+write_report_msg(" - UserLocationInfo 필드는 공백 허용안됨")
+
+write_report_msg(" - ST 에서 체크되지 않도록 먼저 설정한다")
+set_xml_db("T_DATA_FORMAT", 
+            # 설정할 필드 및 값.
+           {"VALUE_CHECK_TYPE":"1","ALLOW_SPACE":"Y"}, 
+            # - AND - 조건들
+           {"SERVICE_ID":'000007', "DATA_NAME":"GTP_PGW_VLD", "STRUCTURE_CD":"0", "FIELD_NAME":"UserLocationInfo"})
+
+write_report_msg(" - VLD 에서 체크되도록 설정한다")
+set_xml_db("T_DATA_FORMAT", 
+           {"VALUE_CHECK_TYPE":"2","ALLOW_SPACE":"N"}, 
+           {"SERVICE_ID":'000007', "DATA_NAME":"GTP_PGW_OUT", "STRUCTURE_CD":"0", "FIELD_NAME":"UserLocationInfo"})
+
+#XXX TODO "GTP_PGW_META" 설정은 변경 안해도 무관한지 체크할것 
+set_xml_db("T_DATA_FORMAT", 
+           {"VALUE_CHECK_TYPE":"2","ALLOW_SPACE":"N"}, 
+           {"SERVICE_ID":'000007', "DATA_NAME":"GTP_PGW_META", "STRUCTURE_CD":"0", "FIELD_NAME":"UserLocationInfo"})
+
+"""
+# 변경 여부 재 확인 
+assert_eq_xml_db_fields("T_DATA_FORMAT", 
+        {"VALUE_CHECK_TYPE":"1","ALLOW_SPACE":"Y"}, # 확인할 필드 및 값.
+        {"SERVICE_ID":'000007', "DATA_NAME":"GTP_PGW_VLD", "STRUCTURE_CD":"0", "FIELD_NAME":"UserLocationInfo"})
+assert_eq_xml_db_fields("T_DATA_FORMAT", 
+        {"VALUE_CHECK_TYPE":"2","ALLOW_SPACE":"N"}, 
+        {"SERVICE_ID":'000007', "DATA_NAME":"GTP_PGW_OUT", "STRUCTURE_CD":"0", "FIELD_NAME":"UserLocationInfo"})
+assert_eq_xml_db_fields("T_DATA_FORMAT", 
+        {"VALUE_CHECK_TYPE":"2","ALLOW_SPACE":"N"}, 
+        {"SERVICE_ID":'000007', "DATA_NAME":"GTP_PGW_META", "STRUCTURE_CD":"0", "FIELD_NAME":"UserLocationInfo"})
+"""
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("2. Sample 데이터를 확인한다.")
+write_report_msg(" - 설정 된 필드에 값이 없이 공백인 Sample 및 정상 판정 데이터가 같이 존재함")
+
+#grep_ov_result ("ov -f PGW_CDR  ${TEST_DATA_DIR}/sample_cdr/02.NotSpace/*", "userLocationInfo", 5)
+# sample CDR 의 특정 필드 값을 logging. ov 명령 수행의 앞 5 라인만 출력
+write_report_msg("오류 데이타 (모두 Space)")
+run_shell_cmd("ov -f PGW_CDR  ${TEST_DATA_DIR}/sample_cdr/02.NotSpace/GTP_PGW11_01_20191119_1107_000136.DAT | grep 20202020202020202020202020 | head -5")
+#grep_ov_result ("ov -f PGW_CDR  ${TEST_DATA_DIR}/sample_cdr/02.NotSpace/GTP_PGW11_01_20191119_1107_000136.DAT", "20202020202020202020202020", 5)
+
+write_report_msg("정상 데이타 ")
+run_shell_cmd ("ov -f PGW_CDR  ${TEST_DATA_DIR}/sample_cdr/02.NotSpace/GTP_PGW11_01_20191119_1107_000137.DAT | grep userLocationInfo | head -5" )
+#grep_ov_result ("ov -f PGW_CDR  ${TEST_DATA_DIR}/sample_cdr/02.NotSpace/GTP_PGW11_01_20191119_1107_000137.DAT", "userLocationInfo", 5)
+
+write_report_msg("3. VLD log file, OUTPUT IPMD 내 directory 전부 삭제한다")
+remove_app_file_log("VLD*.${CUR_YYYYMMDD}")
+remove_all_ipmd_output_files() #ex) /POFCS/OUTPUT/GTP_PGW/IPMD 내 폴더안 file삭제
+
+#///////////////////////////////////////////////////////////////////////////////
+# STD 프로세스를 재초기화 cli 명령 수행
+write_report_msg("4. STD 프로세스를 초기화 한다")
+run_cli_cmd("INIT-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:ST") 
+
+#///////////////////////////////////////////////////////////////////////////////
+# VLD 프로세스를 재초기화 cli 명령 수행
+write_report_msg("5. VLD 프로세스를 초기화 한다")
+run_cli_cmd("INIT-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:VA") 
+
+#///////////////////////////////////////////////////////////////////////////////
+# simul 전송 -> 관련된 설정은 per_pkg.ini 에 존재 
+write_report_msg("6. simul 전송한다")
+send_simul_gtp ("${TEST_DATA_DIR}/sample_cdr/02.NotSpace")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("7. validation 체크로 발생한 alarm(21119003) 을 VLD 로그에서 확인한다(최대10분 대기)")
+assert_file_grep("ALARM CODE : [21119003]", "${LOG_BASE_PATH}/${SERVICE_NAME}/VLD*.${CUR_YYYYMMDD}", 600) 
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("8. Error 파일 확인")
+write_report_msg("error cdr 에서 20202020202020202020202020 문자열을 찾는다(최대10분 대기)")
+#wait_secs(360) # error 파일 생성 될때까지 여유
+#assert_eq_cmd_output ("ov -f PGW_META ${OUTPUT_IPMD}/FME*/* | fgrep '[UserLocationInfo] : 20202020202020202020202020'  | wc -l", "2")
+#assert_cmd_output_include_string ("ov -f PGW_META ${OUTPUT_IPMD}/FME*/* | fgrep '[UserLocationInfo] : 20202020202020202020202020' ", 
+#                            "[UserLocationInfo] : 20202020202020202020202020")
+
+assert_poll_cmd_output_include_string ("ov -f PGW_META ${OUTPUT_IPMD}/FME*/* | fgrep '[UserLocationInfo] : 20202020202020202020202020' ", 
+                            "[UserLocationInfo] : 20202020202020202020202020", 600)
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("9. 정상 파일 확인")
+write_report_msg("정상 output cdr 에서 1854f050301754f0500071c38b 문자열을 찾는다")
+#assert_eq_cmd_output ("ov -f PGW_IPMD ${OUTPUT_IPMD}/FML*/* | fgrep '[UserLocationInfo] : 1854f050301754f0500071c38b'  | wc -l", "2")
+# 정확한 조건이 애매함. 2개 , 4개가 나오는 경우도 발생
+assert_poll_cmd_output_include_string ("ov -f PGW_IPMD ${OUTPUT_IPMD}/FML*/* ", "[UserLocationInfo] : 1854f050301754f0500071c38b", 600 )
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("10. validation 체크로 발생한 alarm(21119003) 을 T_NFW_ALARM_STATUS 에서 확인한다")
+# table 명과 where 조건에 해당되는 문자열을 넘겨준다. 
+#assert_db_exists("T_NFW_ALARM_STATUS", "CODE='21119003' AND PRC_DATE='${CUR_YYYYMMDD}'")
+
+
+

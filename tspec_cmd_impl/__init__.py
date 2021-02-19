@@ -9,5 +9,9 @@ __all__ = ['lmt_assert',
            'lmt_time',
            'lmt_xml_config',
            'lmt_xml_db',
-           'test_lib']
+           'lmt_oracle',
+           'lmt_mysql',
+           'lmt_rms',
+           'lmt_remote',
+           'lmt_network']
 

@@ -1,0 +1,40 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg ("*** SKT_nTels_POFCS_PKG16.07.1 CRL Short Call에 의한 Main 데이터 Start Time 오류 보완")
+write_report_msg ("	Short Call Map의 데이터가 output 데이터와 융합하는 과정에서, Main데이터의 Start Time 오류발생을 방지하여 최종 output 처리되는 데이터의 {Main, LOS} 의 사용시간이 정확하게 처리되는지 확인한다")
+
+write_report_msg("1. 보완 버전 CRL 프로세스 기동 확인")
+write_report_msg("-	보완 버전 AGG 적용 및 기동")
+run_shell_cmd("disVER GTP_PGW")
+
+#///////////////////////////////////////////////////////////////////////////////
+# XXX pkg test 에서 CR short call 은 사용안함으로 자동 설정된다. 
+# XXX short call 테스트를 위해서는 명시적으로 SHORT_CALL_USE_YN = Y 로 설정 먼저 해야함
+write_report_msg("CR SHORT_CALL_USE_YN=Y 설정 및 CR 재기동")
+set_xml_cfg("APPLICATION/CR/SHORT_CALL_USE_YN","Y")
+run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:CR") 
+run_cli_cmd("STAR-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:CR") 
+
+#///////////////////////////////////////////////////////////////////////////////
+# sample CDR 의 특정 필드 값을 logging. ov 명령 수행의 앞 5 라인만 출력
+write_report_msg("2. Sample 데이터를 확인한다.")
+write_report_msg(" - 설정 된 필드에 값이 없이 공백인 Sample 및 정상 판정 데이터가 같이 존재함")
+
+write_report_msg("3. Short call timeout")
+get_xml_cfg("APPLICATION/CR/SHORT_CALL_TIMEOUT")
+
+write_report_msg("4. IPMD 파일 삭제")
+remove_all_ipmd_output_files() 
+
+write_report_msg("5. Simulator 데이타 전송")
+send_simul_gtp("${TEST_DATA_DIR}")
+
+write_report_msg("6. OUTPUT 확인")
+
+#wait_secs(400)
+#assert_cmd_output_include_string("find ${OUTPUT_IPMD}  -cmin -10 -name 'P*B01' -exec ov -f PGW_IPMD  {} \;", "201507140149526" )
+assert_poll_cmd_output_include_string("find ${OUTPUT_IPMD}  -cmin -10 -name 'P*B01' -exec ov -f PGW_IPMD  {} \;", "[StartTime] : 201507140148100",400 )
+
+write_report_msg("=============== END ============")
+
+

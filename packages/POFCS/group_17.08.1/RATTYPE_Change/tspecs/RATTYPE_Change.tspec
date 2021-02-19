@@ -1,0 +1,15 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg("*** PKG_17.08.1 : RATType(3G/LTE) 변경 시 IPMD-CDR 분리 생성 기능")
+write_report_msg("1) RATType 변경 시 IPMD-CDR 을 분리하여 생성하는지 확인한다.")
+
+#///////////////////////////////////////////////////////////////////////////////
+
+write_report_msg("1. Simulator 데이타 전송")
+send_simul_gtp("${TEST_DATA_DIR}")
+wait_secs(240)
+write_report_msg("2. RATType 변경 시 IPMD-CDR 생성 확인")
+wait_secs(5)
+assert_eq_cmd_output ("find ${OUTPUT_IPMD} -cmin -6 -name 'P*B01' -exec ov -f PGW_IPMD -s '[DataType] : 0' {} \; | grep RATType | xargs echo | tr -d ' '", "[RATType]:6[RATType]:6[RATType]:1[RATType]:1")
+
+write_report_msg("=============== END ============")

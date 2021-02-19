@@ -1,0 +1,89 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg ("*** MES Alarm 발생 설정 강화 테스트 시나리오 (알람 발생 시간 아님)")
+write_report_msg (" 전체 시간대에 알람 처리 되도록 유효 시간 설정 확인")
+write_report_msg (" ==> 별도 설정 없음 : 시작 시간, 종료 시간 모두 ‘0’")
+write_report_msg (" ==> 이 설정은 위 테스트들을 통해 이미 확인 되었음.")
+
+write_report_msg ("1. 시험 시간대에 알람 발생되지 않도록 유효 시간 설정 확인")
+write_report_msg ("- 기간, 건수를 0으로 원복하여 모든 알람을 발생시키는 조건으로 변경한다. ")
+write_report_msg ("- 그리고 시간대 조건에 의해서만 알람이 발생되지 않도록 현재 시간 범위를 설정한다 ")
+write_report_msg ("  (예: 현재 시간이 13시 라면 13~14 를 설정). 13 ~ 14 로 설정하여 발생안되는 조건으로 변경한다.")
+
+write_report_msg("NMD_Config.xml 의 CDR_DUP_CHECK = N 로 설정필요함")
+set_xml_cfg("APPLICATION/${SERVICE_NAME}/CDR_DUP_CHECK",   "N")
+# ------------------------------------------------------------------------------
+write_report_msg("2. ST에서 suffix error alarm 발생되게 설정한다")
+set_xml_db("T_DATA_FORMAT", 
+            # 설정할 필드 및 값.
+           {"VALUE_CHECK_TYPE":"53","ALLOW_SPACE":"N","CHECK_PATTERN":"abc"}, 
+            # - AND - 조건들
+           {"SERVICE_ID":'000007', "DATA_NAME":"GTP_PGW_VLD", "STRUCTURE_CD":"1", "FIELD_NAME":"URL"})
+
+# 변경 여부 재 확인 
+assert_eq_xml_db_fields("T_DATA_FORMAT", 
+        # 확인할 필드 및 값.
+        {"VALUE_CHECK_TYPE":"53","ALLOW_SPACE":"N","CHECK_PATTERN":"abc"}, 
+        # - AND - 조건들
+        {"SERVICE_ID":'000007', "DATA_NAME":"GTP_PGW_VLD", "STRUCTURE_CD":"1", "FIELD_NAME":"URL"})
+
+set_xml_cfg("APPLICATION/${SERVICE_NAME}/AG/CDR_DUP_CHECK","N")
+set_xml_cfg("APPLICATION/${SERVICE_NAME}/VA/CDR_DUP_CHECK","N")
+
+#///////////////////////////////////////////////////////////////////////////////
+# DB XML 설정 및 확인 
+write_report_msg("3. T_NFW_ALARM_DEF.xml 설정")
+write_report_msg(" - suffix validation alarm (21119053) 시간, 건수 0 으로 설정한다")
+write_report_msg(" - NO_ALARM_HOUR_FROM, NO_ALARM_HOUR_TO 를 현재 시간으로 설정하여 알람 발생 안되게 한다")
+
+# XXX : ${CURR_HH}   --> 현재 시간으로 바뀐다. 
+# XXX : ${CURR_HH+1} --> 현재 시간 + 1 로 바뀐다. 
+set_xml_db("T_NFW_ALARM_DEF", 
+        {"THRESHOLD_TIME_SECS":"0","THRESHOLD_CNT":"0",
+         "NO_ALARM_HOUR_FROM":"${CURR_HH}",
+         "NO_ALARM_HOUR_TO"  :"${CURR_HH+1}","ALARM_FLAG":"Y"}, 
+        {"CODE":"21119053"}) 
+
+assert_eq_xml_db_fields("T_NFW_ALARM_DEF", 
+        {"THRESHOLD_TIME_SECS":"0","THRESHOLD_CNT":"0",
+         "NO_ALARM_HOUR_FROM":"${CURR_HH}",
+         "NO_ALARM_HOUR_TO"  :"${CURR_HH+1}","ALARM_FLAG":"Y"}, 
+        {"CODE":"21119053"}) 
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("4. Sample 데이터를 확인한다.")
+write_report_msg("  테스트에 사용된 데이터는 LOS 10개이다.")
+write_report_msg("  각 LOS는 21119053 알람(suffix check error)이 1개가 발생되는 조건이다.")
+write_report_msg("  그러므로 MES 로 전체 10 개 알람이 전송 된다")
+
+write_report_msg(" sample cdr 정보 ")
+run_shell_cmd ("ov -f PGW_CDR ${TEST_DATA_DIR}/sample_cdr/003.ALARM/*")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("5. MES,ST log file 삭제한다")
+remove_pfnm_file_log("MES*.${CUR_YYYYMMDD}")
+remove_app_file_log ("ST*.${CUR_YYYYMMDD}")
+
+#///////////////////////////////////////////////////////////////////////////////
+# STD 프로세스를 재초기화 cli 명령 수행
+write_report_msg("6. STD 프로세스를 초기화 한다")
+run_cli_cmd("INIT-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:ST") 
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("7. MES init 을 수행한다")
+run_cli_cmd("INIT-PFM:${PACKAGE_NAME}:${SYSTEM_NAME}:MES") 
+
+wait_secs(10) # MES에서 처리 할 여유 시간을 좀 준다
+#///////////////////////////////////////////////////////////////////////////////
+# simul 전송 -> 관련된 설정은 per_pkg.ini 에 존재 
+write_report_msg("8. simul 전송한다. ")
+send_simul_gtp ("${TEST_DATA_DIR}/sample_cdr/003.ALARM")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("9. 발생된 알람이 없음을 확인한다")
+write_report_msg("  전체 10 개 알람이 발생되어야 하지만, MES 설정에 의해 발생안됨 확인")
+wait_secs(20) # MES에서 알람 처리 할 여유 시간을 좀 준다
+assert_eq_cmd_output ("grep 'send alarm (21119053)' ${LOG_BASE_PATH}/PFNM/SVC/MES*.${CUR_YYYYMMDD} | wc -l", "0")
+write_report_msg("  알람 유효 시간 설정에 의해 시험 시간에 발생된 이슈는 알람 처리되지 않는 것을 확인한다")
+assert_eq_cmd_output ("grep 'out of range SKIP' ${LOG_BASE_PATH}/PFNM/SVC/MES*.${CUR_YYYYMMDD} | wc -l", "10")
+

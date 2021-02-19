@@ -1,0 +1,73 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg ("*** CMP CR Ration 계산을 완료, timeout 된것만 대상으로 처리")
+write_report_msg("정합률(SMF/UPF) 도출하는 기준을 1분 동안 발생한 완료호 + timeout호 만 대상으로 처리한다")
+write_report_msg("현재 들어오고있는 패킷들은 아직 완료,불완료 판단 이전이므로 제외.")
+write_report_msg("- SMF, UPF 모두 수신하였으나 Volume 이 서로 다른 경우 테스트")
+
+#///////////////////////////////////////////////////////////////////////////////
+# DB XML 설정 및 확인 
+write_report_msg("")
+write_report_msg("1. Check 조건 확인")
+write_report_msg(" - T_CR_GROUP_DEF 에 MAIN_TIME_LIMIT (end wait timeout)값을 180으로 설정한다")
+write_report_msg(" - T_CR_GROUP_DEF 에 CR_WAIT_TIME_LIMIT (end완료후 대기timeout)값을 60으로 설정한다")
+
+set_xml_db("T_CR_GROUP_DEF", 
+            # 설정할 필드 및 값.
+           {"MAIN_TIME_LIMIT":"180","CR_WAIT_TIME_LIMIT":"60"}, 
+            # - AND - 조건들
+           {"CR_GROUP_NAME":"CR_CMP_01"})  
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("2. Sample 데이터를 확인한다.")
+write_report_msg(" - SMF, UPF : 모든 datavolume 값은 10으로 동일하다")
+write_report_msg("       MSISDN 이 SMF,UPF 모두 동일하지만 LOS 개수가 차이 있음.")
+write_report_msg(" - SMF CDR : main 30개 , 각 main 당 LOS 3 개로 이루어진 CDR 임")
+run_shell_cmd ("ov -f SOFCS_CDR ${TEST_DATA_DIR}/SMF_CDR/* |  egrep 'FileName|listOfServiceData|datavolumeFBCUplink|datavolumeFBCDownlink' ")
+write_report_msg(" - UPF CDR : main 30개 , 각 main 당 LOS 4 개로 이루어진 CDR 임")
+run_shell_cmd ("ov -f SOFCS_CDR ${TEST_DATA_DIR}/UPF_CDR/* |  egrep 'FileName|listOfServiceData|datavolumeFBCUplink|datavolumeFBCDownlink' ")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("3. CMP log file 삭제한다")
+remove_app_file_log("CMP*.${CUR_YYYYMMDD}")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("4. CMP 프로세스를 초기화 한다")
+run_cli_cmd("INIT-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:CM") 
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("5. simul 전송한다. SMF, UPF GTP 양쪽으로 전송한다.")
+write_report_msg("   (smf_gtp.cfg, upf_gtp.cfg 의 GTP 설정 정보는 테스트 하는 시스템에 맞게 수정되어야 한다)")
+write_report_msg("   SMF simul 전송한다")
+send_simul_gtp ("${TEST_DATA_DIR}/SMF_CDR", "${TEST_DATA_DIR}/smf_gtp.cfg")
+write_report_msg("   UPF simul 전송한다")
+send_simul_gtp ("${TEST_DATA_DIR}/UPF_CDR", "${TEST_DATA_DIR}/upf_gtp.cfg")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("6. CMP 로그에 'UPF       ->       IN [        120]' 출력될때까지 대기한다(최대 10분) ")
+write_report_msg("   --> main(30) x los(4) = 120 ")
+assert_file_grep("[INPUT  LOS COUNT     ] UPF       ->       IN [        120]", 
+        "${LOG_BASE_PATH}/${SERVICE_NAME}/CMP*.${CUR_YYYYMMDD}", 600) 
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("7. 아직 완료 timeout 이전 이므로, CMP CHKED PACKET 항목에는 0이 출력되는것을 확인한다")
+write_report_msg("   즉, 이 시점에는 정합성 체크를 수행하지 않는다 (테스트 항목).")
+assert_file_grep("[CMP CHKED PACKET     ] UPF       ->       UP [          0]",
+        "${LOG_BASE_PATH}/${SERVICE_NAME}/CMP*.${CUR_YYYYMMDD}", 10) 
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("8. RATIO 확인")
+write_report_msg("   아직 정합성 체크를 수행하지 않았으므로 CR Ratio 는 100% 인것을 확인한다(테스트 항목).")
+assert_file_grep("[CMP RESULT RATIO     ] (SMF/UPF) ->       UP [     100.00]",
+        "${LOG_BASE_PATH}/${SERVICE_NAME}/CMP*.${CUR_YYYYMMDD}", 10) 
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("9. 정합성 체크 에러 발생 확인")
+write_report_msg("   이후, 완료 timeout 만큼 지난 시점에, 정합성 체크가 수행된다.")
+write_report_msg("   SMF/UPF data volume 이 각각 30, 40 이므로, 75% 로 판단되어야 정상이다. 출력될때까지 대기한다")
+assert_file_grep("[CMP RESULT RATIO     ] (SMF/UPF) ->       UP [      75.00]",
+        "${LOG_BASE_PATH}/${SERVICE_NAME}/CMP*.${CUR_YYYYMMDD}", 600) 
+write_report_msg("   ALARM 발생 상세 로그 출력한다.")
+run_shell_cmd("egrep 'ALARM CODE|DIFF SMF/UPF CDR' ${LOG_BASE_PATH}/${SERVICE_NAME}/CMP*.${CUR_YYYYMMDD} ")
+
+

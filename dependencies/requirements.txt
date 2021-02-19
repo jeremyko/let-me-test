@@ -1,1 +1,8 @@
-colorlog>=4.1.0
+colorlog==4.1.0
+configparser==4.0.2
+cx-Oracle==7.3.0
+pexpect==4.8.0
+paramiko==2.7.1
+psutil==5.7.2
+alive-progress==1.6.1
+PyMySQL==0.10.0

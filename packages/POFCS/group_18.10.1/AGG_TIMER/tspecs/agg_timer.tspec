@@ -1,0 +1,61 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg ("*** SKT_nTels_POFCS_PKG18.10.1_002_AGG_TIMER오류보완")
+write_report_msg ("""- 배경 : AGG 의 File DB 사용 시,
+호 유입이 없으면 마지막 세션 데이터의 Timer 처리가 누락되는 오류 발생
+- 원인분석
+	AGG 는 성능 개선을 위해 File DB 와 Timer 를 사용하지 않는 기능 추가 개발
+	Timer 를 사용하지 않는 형상에서는 별도로 Timer 에 의한 데이터 처리 수행 불필요
+	Timer 기능 변경 과정에서 Main Loop 의 Timer 처리 위치 변경으로 동작 누락 Case 발생
+
+	요구사항
+- AGG Timer 동작 오류 보완
+""")
+#///////////////////////////////////////////////////////////////////////////////
+# DB XML Mandarory 필드에 값 확인 
+write_report_msg("1. AGG 타이머 사용 설정 확인")
+write_report_msg(" - -	타이머 설정 50초 확인")
+
+assert_eq_xml_db_fields("T_AGG_GROUP_DEF", 
+		{"SESSION_EXPIRE_TIME":"50"}, # 확인할 필드 및 값.
+		{"SERVICE_ID":'000007', # - AND - 조건들
+		 "AGG_GROUP_NAME":"AG_VLD_01", 
+		 "IN_STRUCTURE_CD":"1"})
+
+write_report_msg("2. 보완 버전 AGG 프로세스 기동 확인")
+write_report_msg("-	보완 버전 AGG 적용 및 기동")
+run_shell_cmd("disVER ${SERVICE_NAME}")
+
+#///////////////////////////////////////////////////////////////////////////////
+# sample CDR 의 특정 필드 값을 logging. ov 명령 수행의 앞 5 라인만 출력
+write_report_msg("3. Sample 데이터를 확인한다.")
+write_report_msg(" - 설정 된 필드에 값이 없이 공백인 Sample 및 정상 판정 데이터가 같이 존재함")
+#grep_ov_result ("ov -f PGW_CDR ${TEST_DATA_DIR}/*", "p-GWAddress", 5)
+write_report_msg("4. AG 프로세스 종료")
+run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:AG")
+wait_secs(5)
+assert_app_running("${SERVICE_NAME}", "AGG", 0)
+run_shell_cmd("rm -f ${LOG_BASE_PATH}/${SERVICE_NAME}/AGG*${CUR_YYYYMMDD}")
+
+
+write_report_msg("5. AG 프로세스 기동")
+run_cli_cmd("STAR-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:AG")
+wait_secs(10)
+assert_app_running("${SERVICE_NAME}", "AG", 10)
+assert_prc_running("${SERVICE_NAME}_AG")
+
+run_shell_cmd("tail  ${LOG_BASE_PATH}/${SERVICE_NAME}/AGG*${CUR_YYYYMMDD}")
+
+write_report_msg("6. Simulator 데이타 전송")
+send_simul_gtp("${TEST_DATA_DIR}")
+wait_secs(180)
+write_report_msg("7. Log 확인")
+
+#MAIN IN [    2] 오고 FDB [0]이 와야 할때
+assert_file_grep_sequentially(['Recovery','MAIN IN\[[ ]*[1-9]+','FDB \[0'], "${LOG_BASE_PATH}/${SERVICE_NAME}/AGG*${CUR_YYYYMMDD}")
+#assert_file_grep_sequentially(['MAIN IN','FDB'], "AGG*${CUR_YYYYMMDD}")
+#run_shell_cmd("tail /POFCS/LOG/GTP_PGW/AGG*${CUR_YYYYMMDD}|grep STAT")
+
+write_report_msg("=============== END ============")
+
+

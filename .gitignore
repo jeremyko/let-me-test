@@ -1,14 +1,19 @@
 do_not_delete_internal_use
-sample/test_pkg/pkg_test_result
+pkg_test_result
+nohup.out
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
 
+core.*
+
 # C extensions
 *.so
 *.swp
+*.swo
+*.py~
 
 # Distribution / packaging
 .Python

@@ -1,0 +1,78 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg ("*** VLD_Validation 강화 테스트 시나리오 (문자열 Prefix 값 Validation)")
+
+#///////////////////////////////////////////////////////////////////////////////
+# DB XML 설정 및 확인 
+write_report_msg("1. 문자열 Prefix check 조건 확인")
+write_report_msg(" - RuleBaseName 필드는 NoQoS 로 시작되어야 함")
+
+write_report_msg(" - ST 에서 체크되지 않도록 먼저 설정한다")
+set_xml_db("T_DATA_FORMAT", 
+            # 설정할 필드 및 값.
+           {"VALUE_CHECK_TYPE":"1","ALLOW_SPACE":"Y"}, 
+            # - AND - 조건들
+           {"SERVICE_ID":'000007', "DATA_NAME":"GTP_PGW_VLD", "STRUCTURE_CD":"1", "FIELD_NAME":"RuleBaseName"})
+
+write_report_msg(" - VLD 에서 체크되도록 설정한다")
+set_xml_db("T_DATA_FORMAT", 
+           {"VALUE_CHECK_TYPE":"52","ALLOW_SPACE":"Y","CHECK_PATTERN":"NoQoS"}, 
+           {"SERVICE_ID":'000007', "DATA_NAME":"GTP_PGW_OUT", "STRUCTURE_CD":"1", "FIELD_NAME":"RuleBaseName"})
+
+set_xml_db("T_DATA_FORMAT", 
+           {"VALUE_CHECK_TYPE":"52","ALLOW_SPACE":"Y","CHECK_PATTERN":"NoQoS"}, 
+           {"SERVICE_ID":'000007', "DATA_NAME":"GTP_PGW_META", "STRUCTURE_CD":"1", "FIELD_NAME":"RuleBaseName"})
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("2. Sample 데이터를 확인한다.")
+write_report_msg(" - chargingRuleBaseName 필드가 Prefix 로 시작하지 않는 에러 데이터 및 정상 판정 데이터가 같이 존재함")
+
+write_report_msg("오류 데이타 (Prefix 로 시작하지 않는 데이터 )")
+run_shell_cmd ("ov -f PGW_CDR  ${TEST_DATA_DIR}/sample_cdr/52.Prefix/GTP_PGW11_01_20191119_1107_000136.DAT | grep chargingRuleBaseName | head -5")
+#grep_ov_result ("ov -f PGW_CDR  ${TEST_DATA_DIR}/sample_cdr/52.Prefix/GTP_PGW11_01_20191119_1107_000136.DAT", "chargingRuleBaseName", 5)
+
+write_report_msg("정상 데이타 (Prefix 로 시작됨)")
+run_shell_cmd ("ov -f PGW_CDR  ${TEST_DATA_DIR}/sample_cdr/52.Prefix/GTP_PGW11_01_20191119_1107_000137.DAT | grep chargingRuleBaseName | head -5")
+#grep_ov_result ("ov -f PGW_CDR  ${TEST_DATA_DIR}/sample_cdr/52.Prefix/GTP_PGW11_01_20191119_1107_000137.DAT", "chargingRuleBaseName", 5)
+
+write_report_msg("3. VLD log file, OUTPUT IPMD 내 directory 전부 삭제한다")
+remove_app_file_log("VLD*.${CUR_YYYYMMDD}")
+remove_all_ipmd_output_files() #ex) /POFCS/OUTPUT/GTP_PGW/IPMD 내 폴더안 file삭제
+
+#///////////////////////////////////////////////////////////////////////////////
+# STD 프로세스를 재초기화 cli 명령 수행
+write_report_msg("4. STD 프로세스를 초기화 한다")
+run_cli_cmd("INIT-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:ST") 
+
+#///////////////////////////////////////////////////////////////////////////////
+# VLD 프로세스를 재초기화 cli 명령 수행
+write_report_msg("5. VLD 프로세스를 초기화 한다")
+run_cli_cmd("INIT-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:VA") 
+
+#///////////////////////////////////////////////////////////////////////////////
+# simul 전송 -> 관련된 설정은 per_pkg.ini 에 존재 
+write_report_msg("6. simul 전송한다")
+send_simul_gtp ("${TEST_DATA_DIR}/sample_cdr/52.Prefix")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("7. validation 체크로 발생한 alarm(21119052) 을 VLD 로그에서 확인한다(최대10분 대기)")
+assert_file_grep("ALARM CODE : [21119052]", "${LOG_BASE_PATH}/${SERVICE_NAME}/VLD*.${CUR_YYYYMMDD}", 600) 
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("8. Error 파일 확인")
+write_report_msg("error cdr 에서 STVLD052 문자열을 찾는다(최대10분 대기). ")
+#wait_secs(360) # error 파일 생성 될때까지 여유
+#assert_cmd_output_include_string ("ov -f PGW_META ${OUTPUT_IPMD}/FME*/* | fgrep 'STVLD052' ", "STVLD052")
+assert_poll_cmd_output_include_string ("ov -f PGW_META ${OUTPUT_IPMD}/FME*/* | fgrep 'STVLD052' ", "STVLD052", 600)
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("9. 정상 파일 확인")
+write_report_msg("정상 output cdr 에서 STVLD052 문자열을 찾는다. 0개가 나와야 한다")
+assert_eq_cmd_output ("ov -f PGW_IPMD ${OUTPUT_IPMD}/FML*/* | fgrep 'STVLD052'  | wc -l", "0")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("10. validation 체크로 발생한 alarm(21119052) 을 T_NFW_ALARM_STATUS 에서 확인한다")
+# table 명과 where 조건에 해당되는 문자열을 넘겨준다. 
+#assert_db_exists("T_NFW_ALARM_STATUS", "CODE='21119052' AND PRC_DATE='${CUR_YYYYMMDD}'")
+
+

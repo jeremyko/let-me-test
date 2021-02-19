@@ -1,0 +1,27 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg("*** PKG_15.11.0 : 데이터 포맷 변경 및 추가")
+write_report_msg("1) META-CDR 및 IPMD-CDR 에서 UP/Dn 필드 자릿수가 11자리인지 확인한다.")
+write_report_msg("2) IPMD-CDR 에서 추가된 SKTPPE, SessionStatus 필드가 있는지 확인한다.")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("판정 기준") 
+write_report_msg("IPMD-CDR 에서 추가된 SKTPPE, SessionStatus 필드가 있는지 확인한다.") 
+write_report_msg("DatavolumeFBCUpink, DatavolumeFBCDownink, FreeVolumeUplink, FreeVolumeDownlink 항목 CDR 데이터가 11자리 이거나, aggregation에 의한 결과값이 11자리가 되는 경우, 정상적으로 출력되는지 확인한다 ") 
+
+#///////////////////////////////////////////////////////////////////////////////
+
+write_report_msg("1. Simulator 데이타 전송")
+send_simul_gtp("${TEST_DATA_DIR}/sktppe")
+wait_secs(240)
+send_simul_gtp("${TEST_DATA_DIR}/volume")
+#///////////////////////////////////////////////
+write_report_msg("2. OUTPUT 확인")
+wait_secs(5)
+#assert_cmd_output_include_string("find ${OUTPUT_IPMD}  -cmin -10 -name 'P*B01' -exec ov -f PGW_IPMD  {} \;", "201507140149526" )
+#assert_poll_cmd_output_include_string("find ${OUTPUT_IPMD}  -cmin -10 -name 'P*B01' -exec ov -f PGW_IPMD  {} \;", "[StartTime] : 201507140148100",400 )
+assert_eq_cmd_output ("find ${OUTPUT_IPMD} -cmin -10 -name 'P*B01' -exec ov -f PGW_IPMD {} \; | grep SKTPPE | awk '{print $3}'", "237")
+wait_secs(240)
+assert_eq_cmd_output ("find ${OUTPUT_IPMD} -cmin -10 -name 'P*B01' -exec ov -f PGW_IPMD {} \; | grep link | awk '{print $3}' | wc -L", "11")
+
+write_report_msg("=============== END ============")

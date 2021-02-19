@@ -1,0 +1,56 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg("*** PKG_16.10.0 : 과금 서비스 타입 적용 ON/OFF 기능")
+write_report_msg("1) 설정에 의해 QoS 제어 과금 이 외의 일반 과금 데이터에 대해서 IP/Port 정책을 적용하는 기능을 확인한다.")
+
+write_report_msg("판정 기준") 
+write_report_msg("기능 OFF인 경우에는 QoS 데이터에 대해서만 IP/Port 정책을 적용하여 Service Type을 설정")
+write_report_msg("기능 On인 경우에는 모든 데이터에 대해서 IP/Port 정책을 적용하여 Service Type을 설정")
+
+#///////////////////////////////////////////////////////////////////////////////////////////////////////
+write_report_msg(" NMD_Config.xml 파일 백업")
+run_shell_cmd ("cp /POFCS/CG/CFG/NMD_Config.xml ${TEST_DATA_DIR}/NMD_Config.xml.ori")
+
+#/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+write_report_msg("1. STD의 전체 IP/Port 정책 적용 설정 값을 OFF로 설정")
+set_xml_cfg("APPLICATION/GTP_PGW/SVC_TYPE/IP_PORT_POLICY_ALL_YN","N")
+
+write_report_msg("2. STD 프로세스 재기동")
+run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_PGW:ST:")
+wait_secs(10)
+run_cli_cmd("STAR-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_PGW:ST:")
+wait_secs(10)
+
+write_report_msg("3. Simulator 데이타 전송")
+send_simul_gtp("${TEST_DATA_DIR}/IP_PORT")
+wait_secs(60)
+
+write_report_msg("4. STD에서 처리한 데이터의 Service Type 확인. (ServiceID='1002'인 데이터의 ServiceType이 ETC인지 확인)")
+assert_eq_cmd_output ("find /POFCS/WORK/GTP_PGW/FMS09 -cmin -2 -name 'POFCS*.DAT' -exec ov -d -f PGW_META {} \; | grep 1002 | awk -F '^' '{print $53}'", "ETC")
+
+# /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+write_report_msg("5. STD의 전체 IP/Port 정책 적용 설정 값을 ON으로 설정")
+set_xml_cfg("APPLICATION/GTP_PGW/SVC_TYPE/IP_PORT_POLICY_ALL_YN","Y")
+
+write_report_msg("6. STD 프로세스 재기동")
+run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_PGW:ST:")
+wait_secs(10)
+run_cli_cmd("STAR-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_PGW:ST:")
+wait_secs(10)
+
+write_report_msg("7. Simulator 데이타 전송")
+send_simul_gtp("${TEST_DATA_DIR}/IP_PORT")
+wait_secs(60)
+
+
+write_report_msg("8. STD에서 처리한 데이터의 Service Type 확인. (ServiceID='1002'인 데이터의 ServiceType이 PTT인지 확인)")
+assert_eq_cmd_output ("find /POFCS/WORK/GTP_PGW/FMS09 -cmin -2 -name 'POFCS*.DAT' -exec ov -d -f PGW_META {} \; | grep 1002 | awk -F '^' '{print $53}'", "PTT")
+
+#//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// 
+
+write_report_msg("7. 원복")
+run_shell_cmd ("cp ${TEST_DATA_DIR}/NMD_Config.xml.ori /POFCS/CG/CFG/NMD_Config.xml")
+
+write_report_msg("=============== END ============")

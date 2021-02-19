@@ -1,0 +1,30 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg("*** PKG_17.03.0 : RCT 기능")
+write_report_msg("1) PGW 에서 수신받은 P-CDR 을 IPC 를 통해 RCT 로 전달하는지 확인한다.")
+write_report_msg("2) RCT 로그에서 T_LO_ASN_FORMAT 테이블에 있는 Tag 값에 맞게 필드를 맵핑하는지 확인한다.")
+write_report_msg("3) TCP dump 를 통해 RADIUS 메시지의 Acct-Input-Octet 값이 P-CDR 의 실제 사용량(datavolumeFBDUplink/DownLink)과 동일한지 확인한다.")
+write_report_msg("4) TCP dump 를 통해 P-CDR 의 필드와 RADIUS 메시지의 필드가 규격에 맞게 맵핑하는지 확인한다.")
+write_report_msg("5) TCP dump 를 통해 P-CDR 의 종료 코드가 RADIUS 메시지에 반영하는지 확인한다.")
+write_report_msg("6) PGW 에서 수신받은 P-CDR 을 ODA/DPI 에 전송하는지 확인한다.")
+
+#///////////////////////////////////////////////////////////////////////////////
+
+write_report_msg("1. PCAP 파일 생성")
+start_tcpdump("-i p6p1 host 192.168.12.142 and port 3381 -s 0", "${TEST_DATA_DIR}/GTPPtoRADIUS_ODA.${CUR_YYYYMMDDHH}.pcap")
+wait_secs(5)
+write_report_msg("2. 시뮬 데이터 전송")
+send_simul_gtp("${TEST_DATA_DIR}")
+wait_secs(60)
+write_report_msg("3. PCAP 파일 종료")
+stop_tcpdump("-i p6p1 host 192.168.12.142 and port 3381 -s 0")
+
+#///////////////////////////////////////////////////////////////////////////////
+#write_report_msg("4. PCAP 파일 복사")
+#run_shell_cmd ("cp ${TEST_DATA_DIR}/GTPPtoRADIUS_ODA.${CUR_YYYYMMDDHH}.pcap ${TEST_DATA_DIR}/GTPPtoRADIUS.txt")
+write_report_msg("5. 필드 값 비교")
+assert_eq_cmd_output ("tcpdump -Xqnr ${TEST_DATA_DIR}/GTPPtoRADIUS_ODA.${CUR_YYYYMMDDHH}.pcap 2>/dev/null | grep -E '0x0030|0x0040' | awk '{print $2$3$4$5$6$7$8$9}' |  xargs echo | tr -d ' ' | cut -c 5-65", "383231303238373037323337406c74652e736b74656c65636f6d2e636f6d")
+write_report_msg("6. PCAP 파일 삭제")
+run_shell_cmd ("rm -rf /POFCS/CG/TEST_TOOL/packages/POFCS/group_17.03.0/RADIUS/data/*.pcap")
+
+write_report_msg("=============== END ============")

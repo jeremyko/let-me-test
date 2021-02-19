@@ -1,20 +1,39 @@
-#from core import lmt_exception
-#import os
-#import subprocess
-from core import lmt_util
+import pexpect
+
+from module_core import lmt_exception
+from module_core import lmt_util
+
 
 #///////////////////////////////////////////////////////////////////////////////
-def run_shell_cmd(runner_ctx,cmd):
-    lmt_util.run_shell_cmd(runner_ctx,cmd)
+def do_interactive_cmd(runner_ctx, run_cmd, dic_expect_val):
+    # TODO
+    """
+    timeout_sec = 30
+    #-------------------------------------
+    child = pexpect.spawn('/bin/bash -c "cd /CG/OFCS_SIM/IMS_SIM/SRC; ./DIA_SIM"')
+    child.logfile = sys.stdout
+    #-------------------------------------
+    child.setwinsize(100, 100)
+    child.expect('CLOSE_NOT_READY', timeout=timeout_sec)
+    runner_ctx.logger.info("CLOSE_NOT_READY")
+    #-------------------------------------
+    child.sendline('init 1\n')
+    child.expect('OPEN_NOT_READY', timeout=timeout_sec)
+    runner_ctx.logger.info("OPEN_NOT_READY")
+    #-------------------------------------
+    child.sendline('load 1\n')
+    child.expect('OPEN_READY', timeout=timeout_sec)
+    runner_ctx.logger.info("OPEN_READY")
+    #-------------------------------------
+    child.sendline('start 1\n')
+    child.expect('ALL_SENT', timeout=120)
+    runner_ctx.logger.info("ALL_SENT")
+    #-------------------------------------
+    child.sendline('quit')
+    child.expect('GOOD BYE!', timeout=timeout_sec)
+    runner_ctx.logger.info("GOOD BYE!")
+    #-------------------------------------
+    #child.terminate()
+    child.close()
+    """
     return True
-
-#///////////////////////////////////////////////////////////////////////////////
-"""     
-#python3
-out, err = proc.communicate(timeout=10)
-except subprocess.TimeoutExpired:
-    proc.terminate()
-    proc.wait()
-    err_msg ="cmd failed : timeout : {}".format(cmd)
-    raise lmt_exception.LmtException(err_msg)
-"""    

@@ -1,0 +1,50 @@
+#-*- coding: utf-8 -*-
+
+
+write_report_msg("*** PKG_16.10.0 : SHORT CALL 예외 Service Type 처리 기능")
+write_report_msg("1) Servcie Type에 따라 Short Call 데이터로 판단하지 않는 기능을 확인한다.")
+
+write_report_msg("판정 기준") 
+write_report_msg("설정된 Short Call 예외 Service Type 데이터에 대해서는 Short Call로 처리하지 않는다.") 
+
+#///////////////////////////////////////////////////////////////////////////////
+
+write_report_msg("1. NMD_Config.xml 백업")
+run_shell_cmd ("cp /POFCS/CG/CFG/NMD_Config.xml ${TEST_DATA_DIR}/NMD_Config.xml.ori")
+run_shell_cmd ("cp ${TEST_DATA_DIR}/NMD_Config.xml.test /POFCS/CG/CFG/NMD_Config.xml")
+
+
+write_report_msg("3. NMD_Config.xml파일에서 Short Call 예외 Service Type 확인.")
+get_xml_cfg("APPLICATION/CR/SHORT_CALL_EX_SERVICE_TYPE_1")
+get_xml_cfg("APPLICATION/CR/SHORT_CALL_EX_SERVICE_TYPE_2")
+get_xml_cfg("APPLICATION/CR/SHORT_CALL_EX_SERVICE_TYPE_3")
+
+
+write_report_msg("4. CR 프로세스 재기동")
+run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_PGW:CR:")
+wait_secs(10)
+run_cli_cmd("STAR-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_PGW:CR:")
+wait_secs(10)
+
+write_report_msg("5. Simulator 데이타 전송")
+send_simul_gtp("${TEST_DATA_DIR}/SHORT_CALL_SVC/")
+wait_secs(300)
+
+# //////////////////////////////////////////////////////////////////
+
+write_report_msg("6. 생성된 IPMD-CDR 파일을 확인")
+assert_eq_cmd_output ("find /POFCS/OUTPUT/GTP_PGW/IPMD/FML05 -cmin -10 -name 'PLMS*.B01' -exec ov -f PGW_IPMD {} \; | grep -E 'SessionStatus|ServiceType' | awk -F ' ' 'NR==1 {print $3}'","N")
+assert_eq_cmd_output ("find /POFCS/OUTPUT/GTP_PGW/IPMD/FML05 -cmin -10 -name 'PLMS*.B01' -exec ov -f PGW_IPMD {} \; | grep -E 'SessionStatus|ServiceType' | awk -F ' ' 'NR==2 {print $3}'","FRE")
+assert_eq_cmd_output ("find /POFCS/OUTPUT/GTP_PGW/IPMD/FML05 -cmin -10 -name 'PLMS*.B01' -exec ov -f PGW_IPMD {} \; | grep -E 'SessionStatus|ServiceType' | awk -F ' ' 'NR==3 {print $3}'","S")
+assert_eq_cmd_output ("find /POFCS/OUTPUT/GTP_PGW/IPMD/FML05 -cmin -10 -name 'PLMS*.B01' -exec ov -f PGW_IPMD {} \; | grep -E 'SessionStatus|ServiceType' | awk -F ' ' 'NR==4 {print $3}'","TIK")
+
+
+write_report_msg("7. 원복")
+run_shell_cmd ("cp ${TEST_DATA_DIR}/NMD_Config.xml.ori /POFCS/CG/CFG/NMD_Config.xml")
+run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_PGW:CR:")
+wait_secs(10)
+run_cli_cmd("STAR-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_PGW:CR:")
+
+write_report_msg("=============== END ============")
+
+

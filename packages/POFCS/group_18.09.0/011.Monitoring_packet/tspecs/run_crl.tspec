@@ -1,0 +1,43 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg ("*** SKT_nTels_POFCS_PKG18.09.0_011_모니터링패킷량기록개선 CRL")
+write_report_msg("""배경
+	모니터링 패킷 그래프 표기 지연 현상 발생
+""")
+write_report_msg("""서비스 타입 단위로 생성되는 UI_STAT_SUMMARY 수록에 대한 부하 감소 필요
+	서비스 타입 별 이력 기록 기능과 UI_STAT_SUMMARY 이력 갱신 분리
+	- 서비스 타입 별 이력 기록 : 기존 기록 기능 유지
+    - UI_STAT_SUMMARY : 총 처리량 기록 분리
+
+""")
+
+#///////////////////////////////////////////////////////////////////////////////
+# DB XML Mandarory 필드에 값 확인 
+
+remove_stat_file("*CRL*")
+
+write_report_msg("1. CRL 프로세스 기동 상태 확인")
+write_report_msg("""
+ - 모니터링 패킷 그래프 Input 량은 CRL 프로세스에서 기록
+ - 시험 데이터 처리 가능 한 프로세스 기동 상태 확인
+ """
+ )
+run_cli_cmd("DISP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:CR")
+
+write_report_msg("""2. 시험 데이터 전송
+ - 시뮬레이터에 의한 데이터 전송 확인
+ """
+ )
+send_simul_gtp("${TEST_DATA_DIR}/CRL")
+
+wait_secs(180)
+
+write_report_msg("""3. CRL 프로세스 기록 통계 파일 확인
+ - UI_STAT_SUMMARY 통계 기록 내용 확인
+ - CRL 프로세스 단위 처리 패킷량 총 합을 기록
+"""
+)
+assert_file_grep_sequentially(['30, 300000000 , 300000000 , 600000000 , 600000000'], "${STAT_PATH}/*CRL*.StatReport.${CUR_YYYYMMDD}*")
+
+write_report_msg("=============== END ============")
+

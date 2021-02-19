@@ -1,0 +1,41 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg("pfmMES 재기동 시 Domation Socket 비정상 연결 보완")
+write_report_msg("1) pfmMES 재기동 후 정책동기화 결과 수신 및 반영하는지 확인한다.")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("판정 기준") 
+write_report_msg("POFCS MES 프로세스 재기동 후 Application에서 발생하는 알람(정책동기화 결과 포함)이 MES를 거쳐 EMS pfmLMS 프로세스로 전달 되는지 확인한다.")
+#///////////////////////////////////////////////
+
+write_report_msg("1. PFNM MES 재기동 및 ARM 재기동") 
+run_shell_cmd("pfmStp.sh.test mes")
+wait_secs(10)
+run_shell_cmd("pfmRun.sh.test mes")
+wait_secs(30)
+run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:COMMON:AM:")
+wait_secs(30)
+run_cli_cmd("STAR-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:COMMON:AM:")
+
+#///////////////////////////////////////////////////////////////////////////////
+
+write_report_msg("2. EMS 동기화 시간 변경 및 EMS_PSM 재기동)")
+#send_simul_gtp("${TEST_DATA_DIR}")
+#wait_secs(5)
+ems_run_shell_cmd("cp /OPER/PEMS/UPMS_POLICY/20200601_T_CONV_LIST.csv /OPER/PEMS/UPMS_POLICY/${CUR_YYYYMMDD}_T_CONV_LIST.csv")
+ems_run_shell_cmd("cp /OPER/PEMS/UPMS_POLICY/20200601_t_emp_bill_type_master.csv /OPER/PEMS/UPMS_POLICY/${CUR_YYYYMMDD}_t_emp_bill_type_master.csv")
+ems_run_shell_cmd("cp /OPER/PEMS/UPMS_POLICY/20200601_t_md_action_detail_rule_sub_master.csv /OPER/PEMS/UPMS_POLICY/${CUR_YYYYMMDD}_t_md_action_detail_rule_sub_master.csv")
+ems_run_shell_cmd("cp /OPER/PEMS/UPMS_POLICY/20200601_t_proxy_condition_master.csv /OPER/PEMS/UPMS_POLICY/${CUR_YYYYMMDD}_t_proxy_condition_master.csv")
+ems_run_shell_cmd("cp /OPER/PEMS/UPMS_POLICY/20200601_t_svc_info_base.csv /OPER/PEMS/UPMS_POLICY/${CUR_YYYYMMDD}_t_svc_info_base.csv")
+psm_set_config_and_restart(2)
+wait_secs(120)
+
+#///////////////////////////////////////////////
+write_report_msg("3. ARM 동기화 완료 로그 확인")
+assert_poll_cmd_output_include_string( "strings ${LOG_BASE_PATH}/COMMON/ARM*.${CUR_YYYYMMDD} | grep 'End Reconfig' | wc -l ", "1", max_wait_secs=240)
+#///////////////////////////////////////////////
+write_report_msg("4. EMS PEMS 동기화 완료 로그 확인")
+#assert_poll_cmd_output_include_string( "strings ${LOG_BASE_PATH}/PFNM/SVC/MES*.${CUR_YYYYMMDD} | grep queue | tail -1 | awk -F',' '{print $6}' | awk -F'&' '{if($1 > 0.00) print $1}' | wc -l ", "1", max_wait_secs=240)
+## 완료 후 ARM PSM 동기화 Signal 처리 대기
+wait_secs(30)
+write_report_msg("=============== END ============")

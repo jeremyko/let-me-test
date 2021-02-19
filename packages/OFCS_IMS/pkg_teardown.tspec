@@ -1,0 +1,15 @@
+#-*- coding: utf-8 -*-
+
+#XXX group 내부에 작성된 tspec 에서 변경한 내용은 자동 원복되지만,
+#XXX pkg 단위 공통 tspec 은 수동으로 원복 해줘야 함.
+#XXX setup.tspec 에 작성한 내용을 원복하는 내용으로 여기서 기술해야함.
+
+#-------------------------------------------------------------------------------
+write_report_msg("set CDR_DUP_CHECK =Y , restart LO ")
+set_xml_cfg("APPLICATION/${SERVICE_NAME}/CDR_DUP_CHECK","Y")
+run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:LO")
+run_cli_cmd("STAR-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:LO")
+
+#-------------------------------------------------------------------------------
+# OFCS 에는 SHORT CALL 설정 없음
+

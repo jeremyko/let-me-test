@@ -1,0 +1,24 @@
+#test_cmd ("j","k",500)
+
+write_report_msg("spec2")
+"""
+write_report_msg("\n\
+    <AG>\n\
+      <CDR_DUP_CHECK>Y</CDR_DUP_CHECK>\n\
+      <DUP_TIME_LIMIT>30</DUP_TIME_LIMIT>\n\
+      <DUP_COUNT_LIMIT>50</DUP_COUNT_LIMIT>\n \
+    </AG>\n\
+    <ST>\n\
+      <CDR_DUP_CHECK>Y</CDR_DUP_CHECK>\n   \
+      <DUP_TIME_LIMIT>20000</DUP_TIME_LIMIT>\n\
+      <DUP_COUNT_LIMIT>5000</DUP_COUNT_LIMIT>\n\
+    </ST>")
+
+set_xml_cfg("APPLICATION/${SERVICE_NAME}/AG/CDR_DUP_CHECK",   "Y")
+set_xml_cfg("APPLICATION/${SERVICE_NAME}/AG/DUP_TIME_LIMIT",  "30")
+set_xml_cfg("APPLICATION/${SERVICE_NAME}/AG/DUP_COUNT_LIMIT", "50")
+set_xml_cfg("APPLICATION/${SERVICE_NAME}/ST/CDR_DUP_CHECK",   "Y")
+set_xml_cfg("APPLICATION/${SERVICE_NAME}/ST/DUP_TIME_LIMIT",  "20000")
+set_xml_cfg("APPLICATION/${SERVICE_NAME}/ST/DUP_COUNT_LIMIT", "5000")
+
+"""

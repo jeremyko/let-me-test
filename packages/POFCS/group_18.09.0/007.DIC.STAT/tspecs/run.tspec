@@ -1,0 +1,32 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg ("***  SKT_nTels_POFCS_PKG18.09.0_007_DIC_통계파일처리보완")
+write_report_msg(""" 배경
+	TB POFCS에서 SIZE 0인 통계 파일이 생성되어 DIC가 해당 파일을 처리 후 삭제를 하지 않아 해당 디렉토리에 SIZE 0파일이 누적 되는 현상 발생
+""")
+write_report_msg("DIC가 통계 파일 처리 중 SIZE ‘0’인 파일은 삭제하도록 보완")
+
+write_report_msg("1. DIC 프로세스를 종료한다. ")
+ems_run_cli_cmd("STOP-PRC:${EMS_PACKAGE_NAME}:${EMS_SYSTEM_NAME}:${EMS_SERVICE_NAME}:DI")
+ems_run_cli_cmd("DISP-PRC:${EMS_PACKAGE_NAME}:${EMS_SYSTEM_NAME}:${EMS_SERVICE_NAME}:DI")
+
+write_report_msg("2. SIZE 0인 통계 파일을 생성한다. ")
+ems_run_shell_cmd("touch /OPER/PEMS/OFCS_DATA/POFCS2.PFNM.${CUR_YYYYMMDD}164701.cmp")
+ems_run_shell_cmd("find /OPER/PEMS/OFCS_DATA/ -empty -name '*.cmp'")
+#assert_ems_zero_file_not_exist("/OPER/PEMS/OFCS_DATA/")
+
+wait_secs(5)
+
+write_report_msg("3. DIC 프로세스를 시작한다. ")
+ems_run_cli_cmd("STAR-PRC:${EMS_PACKAGE_NAME}:${EMS_SYSTEM_NAME}:${EMS_SERVICE_NAME}:DI")
+ems_run_cli_cmd("DISP-PRC:${EMS_PACKAGE_NAME}:${EMS_SYSTEM_NAME}:${EMS_SERVICE_NAME}:DI")
+
+wait_secs(60)
+
+write_report_msg("4. SIZE 0파일이 삭제됨을 확인한다")
+ems_run_shell_cmd("find /OPER/PEMS/OFCS_DATA/ -empty -name '*.cmp'")
+assert_ems_zero_file_not_exist("/OPER/PEMS/OFCS_DATA/", "*.cmp")
+
+write_report_msg("=============== END ============")
+
+

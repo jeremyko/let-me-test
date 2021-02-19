@@ -1,0 +1,46 @@
+#-*- coding: utf-8 -*-
+
+try:
+    write_report_msg("*** PKG_15.12.0 : DT Alive 시나리오")
+    write_report_msg("DT 프로세스에서 ftp 연결이 되지 않는 상황에서 재 접속을 시도하는 도중에, ")
+    write_report_msg("주기적으로 Alive update를 수행하는지 확인한다. ")
+    write_report_msg("이 결과로 PMS 프로세스에 의한 강제 재기동이 발생되지 않는지 확인한다")
+
+    #///////////////////////////////////////////////////////////////////////////////
+    write_report_msg("1. DT 가 test 위해 local 접속 및 Debug log 메시지 확인을 위해 xml db, NMD 설정 변경후 DT 재기동한다") 
+
+    write_report_msg("log level 변경 --> DEBUG")
+    write_report_msg("'[17:56:51:928][DEBUG  ] [CDTMain.cpp:216] Alive' 이런 로그를 확인하기 위함")
+    set_xml_cfg("APPLICATION/COMMON/LOG_LEVEL", "-4")
+
+    #XXX 테스트를 위해 local ftp 접속 정보로 변경한다 XXX
+    #XXX 이 정보는 테스트하는 시스템에 따라 변경되어야 함.(로그인 정보 등등)
+    set_xml_db("T_DT_BSS_INFO", 
+                # 설정할 필드 및 값.
+               {"IP_ADDR1":"127.0.0.1","PORT1":"21","IP_ADDR2":"127.0.0.1", "PORT2":"21", 
+                "LOGIN_USER":"pofcs", "LOGIN_PASSWD":"!skt123!"}, 
+                # - AND - 조건들
+               {"BSS_NAME":"LOCAL"})
+
+    run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:DT") 
+    run_cli_cmd("STAR-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:DT") 
+
+    #///////////////////////////////////////////////////////////////////////////////
+    write_report_msg("2. ftp 전송 대상 장비의 ftp server 를 STOP 시킨다") 
+    run_shell_cmd("sudo service vsftpd stop")
+
+    #///////////////////////////////////////////////////////////////////////////////
+    write_report_msg("3. DT log file 전부 삭제한다")
+    remove_app_file_log("DT*.${CUR_YYYYMMDD}")
+
+    #///////////////////////////////////////////////////////////////////////////////
+    write_report_msg("4. DT Log 파일에서 재 접속 시도 및 주기적 Alive update가 수행되는 것을 확인한다")
+    assert_file_grep("Alive", "${LOG_BASE_PATH}/${SERVICE_NAME}/DT*.${CUR_YYYYMMDD}", 600) 
+
+finally:
+    #///////////////////////////////////////////////////////////////////////////////
+    write_report_msg("5. ftp server 를 다시 START 원복한다")
+    run_shell_cmd("sudo service vsftpd start")
+
+
+

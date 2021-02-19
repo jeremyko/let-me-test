@@ -1,0 +1,113 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg ("*** CMP file log 출력 개선")
+write_report_msg("- file log 에 다음 형식으로 출력한다.")
+write_report_msg(" ===> ")
+write_report_msg(" [INPUT  LOS COUNT     ] SMF       ->       IN [          0]     INSERT [          0]    SKIP [          0] ERROR [          0]")
+write_report_msg(" [INPUT  LOS COUNT     ] UPF       ->       IN [          0]     INSERT [          0]    SKIP [          0] ERROR [          0]")
+write_report_msg(" [MEMORY LOS COUNT     ]           ->          [          0]")
+write_report_msg(" [CMP CHKED PACKET     ] SMF       ->       UP [          0]       DOWN [          0]")
+write_report_msg(" [CMP CHKED PACKET     ] UPF       ->       UP [          0]       DOWN [          0]")
+write_report_msg(" [CMP CHKED PACKET     ] (SMF+UPF) ->          [          0]")
+write_report_msg(" [CMP RESULT LOS COUNT ]           -> COMPLETE [          0] INCOMPLETE [          0] TIMEOUT [          0]")
+write_report_msg(" [CMP RESULT LOS PACKET]           -> COMPLETE [          0] INCOMPLETE [          0] TIMEOUT [          0]")
+write_report_msg(" [CMP RESULT RATIO     ] (SMF/UPF) ->       UP [     100.00]       DOWN [     100.00] UP+DOWN [     100.00]")
+write_report_msg("  ")
+write_report_msg(" - 'INPUT  LOS COUNT'      => CMP 가 수신한 정보. 1 분 단위로 새로 수신된 개수를 의미.")
+write_report_msg(" - 'MEMORY LOS COUNT'      => 현재 memory로 관리 중인 데이터 개수. msisdn 단위의 개수를 의미")
+write_report_msg("                             'INPUT  LOS COUNT' 는 0 이지만, 'MEMORY LOS COUNT' 는 값이 존재할수 있다.")
+write_report_msg(" - 'CMP CHKED PACKET'      => 정합성 처리를 끝낸 패킷량(volume) 정보")
+write_report_msg(" - 'CMP RESULT LOS COUNT'  => 정합성 처리 결과 개수.  ")
+write_report_msg(" - 'CMP RESULT LOS PACKET' => 정합성 처리 결과 패킷량(volume) ")
+write_report_msg("             'COMPLETE'    => 정합성 처리 결과 일치 ")
+write_report_msg("             'INCOMPLETE'  => 정합성 처리 결과 불일치 ")
+write_report_msg("             'TIMEOUT'     => SMF, UPF 중 데이터 수신이 완료 안되어 END timeout 발생")
+write_report_msg(" - 'CMP RESULT RATIO'      => 정합률 ratio (%)")
+
+
+#///////////////////////////////////////////////////////////////////////////////
+# DB XML 설정 및 확인 
+write_report_msg("")
+write_report_msg("1. Check 조건 확인")
+write_report_msg(" - T_CR_GROUP_DEF 에 MAIN_TIME_LIMIT (end wait timeout)값을 180으로 설정한다")
+write_report_msg(" - T_CR_GROUP_DEF 에 CR_WAIT_TIME_LIMIT (end완료후 대기timeout)값을 60으로 설정한다")
+
+set_xml_db("T_CR_GROUP_DEF", 
+            # 설정할 필드 및 값.
+           {"MAIN_TIME_LIMIT":"180","CR_WAIT_TIME_LIMIT":"60"}, 
+            # - AND - 조건들
+           {"CR_GROUP_NAME":"CR_CMP_01"})  
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("2. Sample 데이터를 확인한다.")
+write_report_msg(" - sample cdr 은 smf,upf 패킷량이 동일한 것(SMF_CDR_NO_ERR.cdr,UPF_CDR_NO_ERR.cdr)과 ")
+write_report_msg("   다른것(SMF_CDR_ERR.cdr,UPF_CDR_ERR.cdr)으로 구성되어있다")
+write_report_msg(" - 모든 datavolume 값은 10으로 동일, MSISDN 이 SMF,UPF 모두 동일.")
+
+write_report_msg(" - smf,upf 패킷량이 동일한 것 : main 6개 , 각 main 당 LOS 4 개")
+run_shell_cmd ("ov -f SOFCS_CDR ${TEST_DATA_DIR}/SMF_CDR_INCOMPLETE_MIX/SMF_CDR_NO_ERR.cdr |  egrep 'FileName|listOfServiceData|datavolumeFBCUplink|datavolumeFBCDownlink' ")
+run_shell_cmd ("ov -f SOFCS_CDR ${TEST_DATA_DIR}/UPF_CDR_INCOMPLETE_MIX/UPF_CDR_NO_ERR.cdr |  egrep 'FileName|listOfServiceData|datavolumeFBCUplink|datavolumeFBCDownlink' ")
+
+write_report_msg(" - UPF CDR : main 30개 , 각 main 당 LOS 4 개로 이루어진 CDR 임")
+write_report_msg(" - smf,upf 패킷량이 다른 것 : main 30개 , 각 main 당 LOS 3개(SMF_CDR_ERR.cdr) ")
+run_shell_cmd ("ov -f SOFCS_CDR ${TEST_DATA_DIR}/SMF_CDR_INCOMPLETE_MIX/SMF_CDR_ERR.cdr |  egrep 'FileName|listOfServiceData|datavolumeFBCUplink|datavolumeFBCDownlink' ")
+
+write_report_msg(" - smf,upf 패킷량이 다른 것 : main 30개 , 각 main 당 LOS 4 개(UPF_CDR_ERR.cdr)")
+run_shell_cmd ("ov -f SOFCS_CDR ${TEST_DATA_DIR}/UPF_CDR_INCOMPLETE_MIX/UPF_CDR_ERR.cdr |  egrep 'FileName|listOfServiceData|datavolumeFBCUplink|datavolumeFBCDownlink' ")
+
+write_report_msg("\n\n")
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("3. CMP log file 삭제한다")
+remove_app_file_log("CMP*.${CUR_YYYYMMDD}")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("4. CMP 프로세스를 초기화 한다")
+run_cli_cmd("INIT-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:CM") 
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("5. simul 전송한다. SMF, UPF GTP 양쪽으로 전송한다.")
+write_report_msg("   (smf_gtp.cfg, upf_gtp.cfg 의 GTP 설정 정보는 테스트 하는 시스템에 맞게 수정되어야 한다)")
+write_report_msg("   SMF simul 전송한다")
+send_simul_gtp ("${TEST_DATA_DIR}/SMF_CDR_INCOMPLETE_MIX", "${TEST_DATA_DIR}/smf_gtp.cfg")
+write_report_msg("   UPF simul 전송한다")
+send_simul_gtp ("${TEST_DATA_DIR}/UPF_CDR_INCOMPLETE_MIX", "${TEST_DATA_DIR}/upf_gtp.cfg")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("\n\n")
+write_report_msg("6. CMP 로그에 ''[MEMORY LOS COUNT     ]           ->          [        258] 출력될때까지 대기한다(최대 10분) ")
+write_report_msg("   258 --> SMF + UPF los count ")
+write_report_msg("       --> SMF los cnt : 114 = 24(정상 : 6*4 los) + 90 (에러 : 30*3 los)")
+write_report_msg("       --> UPF los cnt : 144 = 24(정상 : 6*4 los) + 120(에러 : 30*4 los)")
+assert_file_grep("[MEMORY LOS COUNT     ]           ->          [        258]", 
+        "${LOG_BASE_PATH}/${SERVICE_NAME}/CMP*.${CUR_YYYYMMDD}", 600) 
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("7. 상세 파일 로그 출력한다.")
+run_shell_cmd("egrep 'INPUT  LOS|MEMORY LOS|CMP CHKED|CMP RESULT' ${LOG_BASE_PATH}/${SERVICE_NAME}/CMP*.${CUR_YYYYMMDD} ")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("8. 아직 완료 timeout 이전 이므로, CMP CHKED PACKET 항목에는 0이 출력되는것을 확인한다")
+write_report_msg("   즉, 이 시점에는 정합성 체크를 수행하지 않는다 (테스트 항목).")
+assert_file_grep("[CMP CHKED PACKET     ] UPF       ->       UP [          0]",
+        "${LOG_BASE_PATH}/${SERVICE_NAME}/CMP*.${CUR_YYYYMMDD}", 10) 
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("9. RATIO 확인")
+write_report_msg("   아직 정합성 체크를 수행하지 않았으므로 CR Ratio 는 100% 인것을 확인한다(테스트 항목).")
+assert_file_grep("[CMP RESULT RATIO     ] (SMF/UPF) ->       UP [     100.00]",
+        "${LOG_BASE_PATH}/${SERVICE_NAME}/CMP*.${CUR_YYYYMMDD}", 10) 
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("\n\n")
+write_report_msg("10. 정합성 체크 에러 발생 확인")
+write_report_msg("   이후, 완료 timeout 만큼 지난 시점에, 정합성 체크가 수행된다.")
+write_report_msg("   SMF/UPF data volume sum이 각각 1140, 1440 이므로, 79.17 % 로 판단되어야 정상이다. 출력될때까지 대기한다")
+assert_file_grep("[CMP RESULT RATIO     ] (SMF/UPF) ->       UP [      79.17]",
+        "${LOG_BASE_PATH}/${SERVICE_NAME}/CMP*.${CUR_YYYYMMDD}", 600) 
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("\n\n")
+write_report_msg("11. 상세 파일 로그를 다시 한번 출력한다.")
+run_shell_cmd("egrep 'INPUT  LOS|MEMORY LOS|CMP CHKED|CMP RESULT' ${LOG_BASE_PATH}/${SERVICE_NAME}/CMP*.${CUR_YYYYMMDD} ")
+
+

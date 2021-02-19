@@ -1,0 +1,61 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg ("*** VLD_Validation 강화 테스트 시나리오 (Enumeration 데이터 Validation)")
+
+#///////////////////////////////////////////////////////////////////////////////
+# DB XML 설정 및 확인 
+write_report_msg("1. Check 조건 확인")
+write_report_msg(" - ims_charging_Identifier 필드는 T_DATA_FORMAT_ELEMENT에 정의된 값을 가져아한다")
+write_report_msg(" - VA 에서 체크되도록 설정한다")
+set_xml_db("T_DATA_FORMAT", 
+           {"VALUE_CHECK_TYPE":"55","ALLOW_SPACE":"Y","CHECK_PATTERN":"[0-9]+A.*"}, 
+           {"SERVICE_ID":'000005', "DATA_NAME":"IMS_META_VLD", "STRUCTURE_CD":"1", "FIELD_NAME":"ims_charging_Identifier"})
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("2. T_DATA_FORMAT_ELEMENT.xml 에서 ims_charging_Identifier 필드 확인한다.")
+run_shell_cmd ("xv -s ims_charging_Identifier  ${XML_DB_PATH}/T_DATA_FORMAT_ELEMENT.xml")
+"""
+[OFCS2:/OPER/XML_FILE]xv -s ims_charging_Identifier T_DATA_FORMAT_ELEMENT.xml
+SERVICE_ID  DATA_NAME     STRUCTURE_CD  SEQ_NO  FIELD_NAME               CHECK_VALUE  DESCRIPTION
+-------------------------------------------------------------------------------------------------
+000005      IMS_META      1             1       ims_charging_Identifier  12
+000005      IMS_META_VLD  1             1       ims_charging_Identifier  12
+
+"""
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("3. Sample 데이터를 확인한다.")
+write_report_msg(" - ims_charging_Identifier 필드가 설정된 Element 에 포함되지 않는 에러 데이터 및 정상 판정 데이터가 같이 존재함")
+run_shell_cmd ("ov -f IMS_ARC  ${TEST_DATA_DIR}/sample_cdr/55.Element/tas01_20191115_160340_00000269* | grep  IMS-Charging-Identifier ")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("4. VA log file, OUTPUT IPMD 내 directory 전부 삭제한다")
+remove_app_file_log("VA*.${CUR_YYYYMMDD}")
+remove_all_ipmd_output_files() 
+remove_all_err_output_files() 
+
+#///////////////////////////////////////////////////////////////////////////////
+# VA 프로세스를 재초기화 cli 명령 수행
+# INIT-PRC:OFCS:OFCS2:IMS:VA
+write_report_msg("5. VA 프로세스를 초기화 한다")
+run_cli_cmd("INIT-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:VA") 
+
+#///////////////////////////////////////////////////////////////////////////////
+# XXX simul 전송 -> IMS -> DIA_SIM 
+write_report_msg("6. simul 전송한다")
+send_simul_dm ("${TEST_DATA_DIR}/client_list/55.Element/client.list", "${TEST_DATA_DIR}/raws/55.Element/tas01.ini") 
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("7. validation 체크로 발생한 alarm(21119055) 을 VA 로그에서 확인한다")
+assert_file_grep("ALARM CODE : [21119055]", "${LOG_BASE_PATH}/${SERVICE_NAME}/VA*.${CUR_YYYYMMDD}", 300) 
+
+#///////////////////////////////////////////////////////////////////////////////
+# /OUTPUT/IMS/ERR
+write_report_msg("8. Error 파일 확인")
+write_report_msg("error cdr 에서 STVLD055 문자열을 찾는다. ")
+#assert_eq_cmd_output ("ov -f IMS_META ${OUTPUT_ERR}/* | fgrep '[ofcs_error_code] : STVLD055'  | wc -l", "1")
+#assert_cmd_output_include_string ("ov -f IMS_META ${OUTPUT_ERR}/* | fgrep '[ofcs_error_code] : STVLD055' | head -5 ", "[ofcs_error_code] : STVLD055")
+write_report_msg("CR 에서 timeout 처리될때까지 최대 10분 대기한다")
+assert_poll_cmd_output_include_string ("ov -f IMS_META ${OUTPUT_ERR}/* | fgrep '[ofcs_error_code] : STVLD055' | head -5 ", "[ofcs_error_code] : STVLD055", 600)
+
+

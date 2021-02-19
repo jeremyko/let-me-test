@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
+#202007 kojh create
 #-------------------------------------------------------------------------------
 import sys
 import os
@@ -12,7 +13,8 @@ import logging
 import traceback
 
 #-------------------------------------------------------------------------------
-from core import lmt_runner
+from module_core import lmt_runner
+from module_core import lmt_util
 
 #-------------------------------------------------------------------------------
 # 3rd party dependencies
@@ -26,18 +28,27 @@ def main(argv):
     # pkg_test [PKG_DIR] [OPTION]
     parser = argparse.ArgumentParser(prog=argv[0],formatter_class=RawTextHelpFormatter)
     parser.add_argument('pkg_dir', type=str, help='package directory full path')
-    parser.add_argument('-t','--test_id', required=False,action='append',  \
-            help="specific test id. -t [group name].[test name] "
-            "\n\nex)\n"
-            "pkg_test /CG/PKG_TEST/SOFCS -t GROUP_5G.CDC_REDIS_INSERT_001\n")
-    """
-    parser.add_argument('-p','--parallel', required=False,type=str,  \
-            help= "parallel test. need group info. -p -g [group name]\n ")
-        "\nex) \n" 
-        "pkg_test /CG/PKG_TEST/SOFCS\n" 
-        "pkg_test /CG/PKG_TEST/SOFCS -t GROUP_5G.CDC_REDIS_INSERT_001\n"
-        "pkg_test /CG/PKG_TEST/SOFCS -p -g GROUP_5G\n" )
-    """
+    parser.add_argument('-g','--group', required=False,action='append',  
+            help="-g [group name] \n"
+            "ex) pkg_test ./packages/POFCS -g group_19.12.0\n"
+            "ex) pkg_test ./packages/POFCS -g group_18.10.1 -g group_19.12.0\n\n")
+
+    parser.add_argument('-t','--test_id', required=False,action='append',  
+            help="-t [group name].[test name] \n"
+            "ex) pkg_test ./packages/POFCS -t group_19.12.0.MES_Alarm\n"
+            "ex) pkg_test ./packages/POFCS -t group_19.12.0.MES_Alarm  -t group_19.12.0.VLD_Validation\n\n")
+
+    parser.add_argument('-s','--spec', required=False,action='append',  
+            help="\n-s [group name].[test name].[tspec name] \n"
+            "ex) pkg_test ./packages/POFCS -s group_19.12.0.MES_Alarm.mes_alarm_valid_time\n"
+            "ex) pkg_test ./packages/POFCS -s group_19.12.0.MES_Alarm.mes_alarm_valid_time  "
+                "-s group_19.12.0.MES_Alarm.mes_alarm_no_check\n\n")
+
+    # report file name 을 사용자가 지정할수 있게
+    parser.add_argument('-f','--filename', required=False,  
+            help="-f [report file name] \n"
+            "ex) pkg_test ./packages/POFCS -f my_report_name -t group_19.12.0.MES_Alarm \n")
+
     args = parser.parse_args()
 
     if(args.pkg_dir.endswith(os.sep) != True) :
@@ -45,7 +56,7 @@ def main(argv):
 
     start_dtime = datetime.datetime.now()
 
-    logger = logging.getLogger("auto_tester")
+    logger = logging.getLogger("pkg_test_log")
     stream_hander = colorlog.StreamHandler()
     stream_hander.setFormatter(colorlog.ColoredFormatter(
 	    '%(log_color)s %(asctime)s %(levelname)8s %(funcName)24s:%(lineno)4d  %(message)s',
@@ -64,25 +75,73 @@ def main(argv):
         logger.info("create result dir : {}".format(result_dir_path))
         os.mkdir(result_dir_path)
 
-    # ex) 20200620172022_auto_test_report.txt
-    file_handler = logging.FileHandler('{}/{}_auto_test_report.txt'.
-            format(result_dir_path,start_dtime.strftime('%Y%m%d_%H%M%S') ))
+    timestamp = start_dtime.strftime('%Y%m%d_%H%M%S')
+    logger_summary = logging.getLogger("report_summary")
+    logger_summary.setLevel(logging.INFO) 
+    file_handler = None
+    if args.filename :
+        args.filename = args.filename.strip()
+        logger.info("report file name : {}".format(args.filename))
+        file_handler = logging.FileHandler('{}/{}_{}.txt'.
+                format(result_dir_path, timestamp, args.filename ))
+        file_handler_summary = logging.FileHandler('{}/{}_{}_summary.txt'.
+                format(result_dir_path, timestamp, args.filename ))
+    else:    
+        # ex) 20200620172022_auto_test_report.txt
+        file_handler = logging.FileHandler('{}/{}_auto_test_report.txt'.
+                format(result_dir_path, timestamp ))
+        # ex) 20200620172022_auto_test_summary.txt
+        file_handler_summary = logging.FileHandler('{}/{}_auto_test_summary.txt'.
+                format(result_dir_path, timestamp ))
+
+    file_handler.setFormatter( logging.Formatter('%(asctime)s %(funcName)24s:%(lineno)4d %(message)s'))
     logger.addHandler(file_handler)
 
+    logger_summary.addHandler(file_handler_summary)
 
+    msg = "---------------------------------------------------------"
+    logger.info        (msg)
+    logger_summary.info(msg)
+    msg = "TEST START {}".format(start_dtime.strftime('%Y-%m-%d %H:%M:%S'))
+    logger.info        (msg) 
+    logger_summary.info(msg)
+    msg = "---------------------------------------------------------"
+    logger.info        (msg)
+    logger_summary.info(msg)
+    if(args.group):
+        msg = "- run specific group : {} ".format(args.group)
+        logger.info        (msg)
+        logger_summary.info(msg)
+        if(args.test_id  or args.spec):  #if(args.test_id ):
+            logger.critical("specific group only. no test/tspec args allowed : {} ".format(args.test_id))
+            logger.critical(" ex) pkg_test /CG/PKG_TEST/SOFCS -g group_5G ")
+            logger.critical(" ex) pkg_test /CG/PKG_TEST/SOFCS -t group_01.test1 ")
+            return False
+    elif(args.test_id):
+        msg = "- run specific test  : {} ".format(args.test_id)
+        logger.info        (msg)
+        logger_summary.info(msg)
+    elif(args.spec):
+        msg = "- run specific tspec  : {} ".format(args.spec)
+        logger.info        (msg)
+        logger_summary.info(msg)
+    else:    
+        msg = "- run whole pkg test"
+        logger.info        (msg)
+        logger_summary.info(msg)
 
-
-    logger.info("---------------------------------------------------------")
-    logger.info("TEST START {}".format(start_dtime.strftime('%Y-%m-%d %H:%M:%S')))
-    logger.info("---------------------------------------------------------")
 
     logger.info("- pkg_dir = {} ".format(args.pkg_dir))
-    if(args.test_id):
-        logger.info("- run specific test = {} ".format(args.test_id))
+    is_running, count = lmt_util.is_runnig(argv[0])
+    if(is_running ==True and count >1 ): # 자기 자신을 포함한 개수를 체크해야함
+        msg ="already running. exit"
+        logger.error        (msg)
+        logger_summary.error(msg)
+        return False
 
+    driver = lmt_runner.PkgTestRunner(logger,logger_summary,timestamp,args)
     try:
         #=================================================
-        driver = lmt_runner.PkgTestRunner(logger,args)
         if driver.run_test() == False:
             return False
         #=================================================
@@ -95,20 +154,41 @@ def main(argv):
         for bt in err_stack:
             logger.error("{}{}".format(driver.cur_indent,bt))
         del tb
-
-        #cl, exc, tb = sys.exc_info()
-        #logger.critical("{}".format(traceback.extract_tb(tb)[1])) 
-        #del tb
         return False
     finally:
+
+        driver.run_teardown_if_any()
+        driver.display_run_result()
         end_dtime = datetime.datetime.now()
         elapsed = end_dtime - start_dtime
-        logger.info("---------------------------------------------------------")
-        logger.info("TEST END   {} -> elapsed : {} sec".    \
-                format(end_dtime.strftime('%Y-%m-%d %H:%M:%S'),elapsed.total_seconds()))
-        logger.info("---------------------------------------------------------")
-        #XXX
-        driver.clean_all() 
+        msg = "---------------------------------------------------------"
+        logger.info        (msg)
+        logger_summary.info(msg)
+
+        seconds = elapsed.total_seconds()
+        if(seconds >=  60) :
+            hours   = int(seconds / 3600)
+            minutes = int(seconds / 60) % 60
+            secs    = int(seconds % 60)
+            msg ="TEST END   {} -> elapsed : ({})hours ({})minutes ({})seconds".format(end_dtime.strftime('%Y-%m-%d %H:%M:%S'), hours, minutes, secs)
+        else:
+            msg ="TEST END   {} -> elapsed : ({}) seconds".format(end_dtime.strftime('%Y-%m-%d %H:%M:%S'), seconds )
+
+        logger.info        (msg)
+        logger_summary.info(msg)
+        if(args.group):
+            logger.info("- specific group : {} ".format(args.group))
+        elif(args.test_id):
+            logger.info("- specific test  : {} ".format(args.test_id))
+        elif(args.spec):
+            logger.info("- specific tspec : {} ".format(args.spec))
+        else:    
+            logger.info("- whole pkg test")
+        msg = "---------------------------------------------------------"
+        logger.info        (msg)
+        logger_summary.info(msg)
+
+        driver.clean_all() # XXX
     
     return True        
 

@@ -1,0 +1,88 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg ("*** MES Alarm 발생 설정 강화 테스트 시나리오 (설정에 의해 알람 발생)")
+
+write_report_msg ("1. 오류 셈플에 대해 통합되어 알람 생성되도록 변경")
+write_report_msg ("""
+        -  1분 동안 10건 알람 발생시, 1분 경과후 알람 1건 발생되는 조건으로 수정한다. 
+        이 조건에서는 알람 1건 발생시 발생 건수 정보가 함께 전송된다
+        """)
+
+write_report_msg("NMD_Config.xml 의 CDR_DUP_CHECK = N 로 설정필요함")
+set_xml_cfg("APPLICATION/${SERVICE_NAME}/CDR_DUP_CHECK",   "N")
+# ------------------------------------------------------------------------------
+write_report_msg("2. ST에서 suffix error alarm 발생되게 설정한다")
+set_xml_db("T_DATA_FORMAT", 
+            # 설정할 필드 및 값.
+           {"VALUE_CHECK_TYPE":"53","ALLOW_SPACE":"N","CHECK_PATTERN":"abc"}, 
+            # - AND - 조건들
+           {"SERVICE_ID":'000007', "DATA_NAME":"GTP_PGW_VLD", "STRUCTURE_CD":"1", "FIELD_NAME":"URL"})
+
+# 변경 여부 재 확인 
+assert_eq_xml_db_fields("T_DATA_FORMAT", 
+        # 확인할 필드 및 값.
+        {"VALUE_CHECK_TYPE":"53","ALLOW_SPACE":"N","CHECK_PATTERN":"abc"}, 
+        # - AND - 조건들
+        {"SERVICE_ID":'000007', "DATA_NAME":"GTP_PGW_VLD", "STRUCTURE_CD":"1", "FIELD_NAME":"URL"})
+
+set_xml_cfg("APPLICATION/${SERVICE_NAME}/AG/CDR_DUP_CHECK","N")
+set_xml_cfg("APPLICATION/${SERVICE_NAME}/VA/CDR_DUP_CHECK","N")
+
+#///////////////////////////////////////////////////////////////////////////////
+# DB XML 설정 및 확인 
+write_report_msg("3. T_NFW_ALARM_DEF.xml 설정")
+write_report_msg(" - suffix validation alarm (21119053) 1분동안 10건 알람 발생시에만 알람 발생되는 조건, 건수 0(기본값) 으로 설정한다")
+
+set_xml_db("T_NFW_ALARM_DEF", 
+        {"THRESHOLD_TIME_SECS":"60","THRESHOLD_CNT":"10","NO_ALARM_HOUR_FROM":"0",
+         "NO_ALARM_HOUR_TO":"0","ALARM_FLAG":"Y"}, 
+        {"CODE":"21119053"}) 
+
+assert_eq_xml_db_fields("T_NFW_ALARM_DEF", 
+        {"THRESHOLD_TIME_SECS":"60","THRESHOLD_CNT":"10","NO_ALARM_HOUR_FROM":"0",
+         "NO_ALARM_HOUR_TO":"0","ALARM_FLAG":"Y"}, 
+        {"CODE":"21119053"}) 
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("4. Sample 데이터를 확인한다.")
+write_report_msg("  테스트에 사용된 데이터는 LOS 10개이다.")
+write_report_msg("  각 LOS는 21119053 알람(suffix check error)이 1개가 발생되는 조건이다.")
+write_report_msg("  그러므로 MES 로 전체 10 개 알람이 전송 된다")
+
+write_report_msg(" sample cdr 정보 ")
+run_shell_cmd ("ov -f PGW_CDR ${TEST_DATA_DIR}/sample_cdr/003.ALARM/*")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("5. MES,ST log file 삭제한다")
+remove_pfnm_file_log("MES*.${CUR_YYYYMMDD}")
+remove_app_file_log ("ST*.${CUR_YYYYMMDD}")
+
+#///////////////////////////////////////////////////////////////////////////////
+# STD 프로세스를 재초기화 cli 명령 수행
+write_report_msg("6. STD 프로세스를 초기화 한다")
+run_cli_cmd("INIT-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:ST") 
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("7. MES init 을 수행한다")
+run_cli_cmd("INIT-PFM:${PACKAGE_NAME}:${SYSTEM_NAME}:MES") 
+
+wait_secs(10) # MES에서 처리 할 여유 시간을 좀 준다
+#///////////////////////////////////////////////////////////////////////////////
+# simul 전송 -> 관련된 설정은 per_pkg.ini 에 존재 
+write_report_msg("8. simul 전송한다. ")
+send_simul_gtp ("${TEST_DATA_DIR}/sample_cdr/003.ALARM")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("9. 약 1분 후 , 발생된 알람이 1건 있음을 확인한다")
+write_report_msg("  전체 10 개 알람이 발생되어야 하지만, MES 설정에 의해 1건 발생된것 확인")
+wait_secs(70) # MES에서 알람 처리 할 여유 시간을 좀 준다
+assert_eq_cmd_output ("grep 'send alarm (21119053)' ${LOG_BASE_PATH}/PFNM/SVC/MES*.${CUR_YYYYMMDD} | wc -l", "1")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("10. T_NFW_ALARM_HIST에서 알람 발생 건수가 정상인지 확인")
+# TODO
+"""
+SELECT * FROM t_nfw_alarm_hist WHERE PRC_DATE ='20191120' AND PRC_TIME BETWEEN '09000000' AND '10000000' AND SYSTEM_ID ='0108'  AND code ='21119053';
+"""
+
+

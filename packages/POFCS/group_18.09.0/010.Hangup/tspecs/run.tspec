@@ -1,0 +1,63 @@
+#-*- coding: utf-8 -*-
+
+try:
+	write_report_msg ("***  SKT_nTels_POFCS_PKG18.09.0_010_HangUp감시")
+	write_report_msg(""" 배경
+		PEMS 의 정책 동기화 상태 점검 진행
+	PEMS PSM 프로세스(정책 동기화 수행) 파일 로그 누락 및 동기화 동작 이슈 발생
+	PSM 프로세스 확인 결과 Hang Up 상태
+	PSM 프로세스 및 기타 프로세스의 Hang Up 감시 기능 추가 요청
+	""")
+	write_report_msg("해당 프로세스가 Shared Memory에 Alive 를 체크하고 PMS가 이를 관리하여 HANGUP 상태일 경우 재 기동 하도록 보완 ")
+
+
+	write_report_msg("1. 프로세스를 상태를 확인한다.")
+	ems_run_cli_cmd("DISP-PRC:${EMS_PACKAGE_NAME}:${EMS_SYSTEM_NAME}:${EMS_SERVICE_NAME}:")
+	get_xml_cfg_ems("MANAGEMENT/PMS/PROCESS_HANGUP_TIMEOUT")
+
+	write_report_msg("2. PMS Log를 초기화한다.")
+	ems_run_shell_cmd("cp /dev/null /LOG/PEMS/PFNM/SVC/PMS.99.LOG.${CUR_YYYYMMDD}")
+
+	write_report_msg("3. DIC, PSM, SFC 프로세스를 HANGUP 과 같은 상태로 정지시킨다. ")
+	ems_run_shell_cmd("killall -s SIGSTOP EMS_DIC ")
+	ems_run_shell_cmd("killall -s SIGSTOP EMS_PSM ")
+	ems_run_shell_cmd("killall -s SIGSTOP EMS_SFC")
+	run_shell_cmd("killall -s SIGSTOP COMMON_ARM")
+
+
+
+
+
+	#NMD_Config PROCESS_HANGUP_TIMEOUT보다 크게 기다린다.
+	#현재 300
+	write_report_msg("4. 기다리자............................................................")
+	wait_secs(400)
+
+	write_report_msg("5. DIC, PSM, SFC 프로세스를 HANGUP 해제한다.")
+	ems_run_shell_cmd("killall -s SIGCONT EMS_DIC ")
+	ems_run_shell_cmd("killall -s SIGCONT EMS_PSM ")
+	ems_run_shell_cmd("killall -s SIGCONT EMS_SFC")
+	run_shell_cmd("killall -s SIGCONT COMMON_ARM")
+
+	
+	write_report_msg("6. PMS가 프로세스 재기동할때 대기한다.")
+	wait_secs(120)
+	write_report_msg("7. PMS Log를 확인한다.")
+	get_ems_file("/LOG/PEMS/PFNM/SVC/PMS.99.LOG.${CUR_YYYYMMDD}")
+
+	#Process started! (12143) : (99:9999:000000:000009) (DIC_PFNM-/EMS/PEMS/BIN/EMS_DIC 
+	assert_file_grep_sequentially_ems(['Alarm, Critical, Hangup, Code','Process started!.*EMS_DIC'], "PMS.99.LOG.${CUR_YYYYMMDD}")
+	assert_file_grep_sequentially_ems(['Alarm, Critical, Hangup, Code','Process started!.*EMS_PSM'], "PMS.99.LOG.${CUR_YYYYMMDD}")
+	assert_file_grep_sequentially_ems(['Alarm, Critical, Hangup, Code','Process started!.*EMS_SFC'], "PMS.99.LOG.${CUR_YYYYMMDD}")
+	assert_file_grep_sequentially(['Alarm, Critical, Hangup, Code','Process started!.*COMMON_ARM'], "${LOG_BASE_PATH}/PFNM/SVC/PMS.01.LOG.${CUR_YYYYMMDD}")
+
+#다시 원래대로
+finally:
+	write_report_msg("====================원복 수행====================")
+	ems_run_shell_cmd("killall -s SIGCONT EMS_DIC ")
+	ems_run_shell_cmd("killall -s SIGCONT EMS_PSM ")
+	ems_run_shell_cmd("killall -s SIGCONT EMS_SFC")
+	run_shell_cmd("killall -s SIGCONT COMMON_ARM")
+	write_report_msg("==================== END ========================")
+
+

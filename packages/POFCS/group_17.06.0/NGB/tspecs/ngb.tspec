@@ -1,0 +1,15 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg("*** PKG_17.06.0 : URL 정책 적용 전 NG -> NGB Service Type 변환 기능")
+write_report_msg("1) META-CDR 에서 URL 정책 적용 전 NG -> NGB Service Type 변환을 하는지 확인한다.")
+
+#///////////////////////////////////////////////////////////////////////////////
+
+write_report_msg("1. Simulator 데이타 전송")
+send_simul_gtp("${TEST_DATA_DIR}")
+wait_secs(240)
+write_report_msg("2. URL 없는 NGB 인 경우 FRE 변환 확인")
+wait_secs(5)
+assert_eq_cmd_output ("find ${OUTPUT_IPMD} -cmin -5 -name 'P*B01' -exec ov -f PGW_IPMD {} \; | grep ServiceType | sed -n 3p", "[ServiceType] : NGB")
+
+write_report_msg("=============== END ============")

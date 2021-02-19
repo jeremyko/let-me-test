@@ -1,0 +1,104 @@
+#-*- coding: utf-8 -*-
+
+try:
+	write_report_msg ("***  SKT_nTels_POFCS_PKG18.09.0_003_AGG_타이머처리개선")
+	write_report_msg(""" 배경
+	AGG 성능 개선을 위해 Timer 미사용 모드를 추가하였다. 이는 POFCS 의 경우 과금 데이터 융합을 CRL 에서 수행하고 있으며 AGG 는 CRL 부하 감소를 위해 1차 데이터 융합(서비스 타입 별 데이터 융합, 50초 타이머) 기능을 수행하고 있는 경우에 설정 가능하다. AGG는 Timer 미사용 모드 (Timer 가 0초인 경우) MES Queue 로 수신한 데이터를 융합하여 융합한 결과를 바로 MES Queue로 전송한다. Timer 미사용 모드의 경우 Timer 에 의해 AGG 내부에서 관리되는 {세션 메모리} 와 {File DB} 를 사용하지 않는다. 이를 통해 File DB Audit 에 발생되는 비용을 감소 시켰으며 AGG 프로세스의 File I/O 를 최소화 할 수 있다. 또한 AGG 의 Timer Thread 구조를 제거하여 CRL 과 동일하게 동작하도록 하였으며 이를 통해 불필요한 Thread 생성 비용을 감소시켰다.
+	""")
+	write_report_msg("1.	Timer Thread 확인")
+
+	write_report_msg("프로세스를 상태를 확인한다. 쓰레드 개수 확인")
+	assert_process_thread_count_matching("GTP_PGW_AG", 1)
+
+	write_report_msg("2. AGG Process에서 사용중인 Group Name을 확인한다")
+	write_report_msg("Timer 사용하지 않음")
+	run_shell_cmd("xv ${XML_DB_PATH}/T_AGG_DEF.xml")
+
+	write_report_msg("AGG Group의 Timer 설정을 확인한다.")
+	set_xml_db("T_AGG_GROUP_DEF", 
+			{"INTERIM_WAIT_TIME":"0","STOP_WAIT_TIME":"0"}, 
+			{"SERVICE_ID":"000007", # - AND - 조건들
+			 "AGG_GROUP_NAME":"AG_VLD_01"})
+
+	assert_eq_xml_db_fields("T_AGG_GROUP_DEF", 
+			{"INTERIM_WAIT_TIME":"0","STOP_WAIT_TIME":"0"}, # 확인할 필드 및 값.
+			{"SERVICE_ID":'000007', # - AND - 조건들
+			"AGG_GROUP_NAME":"AG_VLD_01"})
+
+	write_report_msg("3. 프로세스 재기동")
+	run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:AG")
+	remove_app_file_log("AGG*.${CUR_YYYYMMDD}")
+	write_report_msg("AG Dupkey 파일을 삭제한다.")
+	# |true는 exit코드 무시
+	run_shell_cmd("find ${WORK_PATH}/${SERVICE_NAME}/AGG* -name *.hist | xargs rm | true")
+	wait_secs(5)
+	run_cli_cmd("STAR-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:AG")
+	wait_secs(5)
+	run_cli_cmd("DISP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:AG")
+
+
+	write_report_msg("Simul 데이타 전송")
+	send_simul_gtp("${TEST_DATA_DIR}")
+
+	wait_secs(180)
+
+	write_report_msg("4. 로그 확인한다.")
+	write_report_msg("FDB 는 0 이다")
+	run_shell_cmd("grep -E 'MAIN IN' ${LOG_BASE_PATH}/${SERVICE_NAME}/AGG*${CUR_YYYYMMDD}")
+	assert_file_grep_sequentially_not_include(['MAIN IN\[[ ]*[1-9]+.*FDB\[[ ]*[1-9]+'], "${LOG_BASE_PATH}/${SERVICE_NAME}/AGG*${CUR_YYYYMMDD}")
+
+	write_report_msg("==================================================================================")
+
+	write_report_msg("5. AGG Process에서 사용중인 Group Name을 확인한다")
+	write_report_msg("Timer 사용")
+	run_shell_cmd("xv ${XML_DB_PATH}/T_AGG_DEF.xml")
+
+	write_report_msg("AGG Group의 Timer 설정을 확인한다.")
+	write_report_msg("""설명 : 
+1. INTERIM_WAIT_TIME 과 STOP_WAIT_TIME 중 하나만 값을 설정해도, FILE DB를 사용한다.
+2. SESSION_EXPIRE_TIME 은 FILE DB 사용 유무와 관련이 없지만, 0으로 설정할 경우, FILE DB에서 바로 빠져나간다. 따라서 AGG LOG에서 FILE DB 사용 유무를 확인하기 위해서는 최소 120 이상 설정을 권장한다.
+"""
+)
+
+	set_xml_db("T_AGG_GROUP_DEF", 
+			{"SESSION_EXPIRE_TIME":"86400","INTERIM_WAIT_TIME":"60","STOP_WAIT_TIME":"60"}, 
+			{"SERVICE_ID":"000007", # - AND - 조건들
+			 "AGG_GROUP_NAME":"AG_VLD_01"})
+
+	#assert_eq_xml_db_fields("T_AGG_GROUP_DEF", 
+			#{"SESSION_EXPIRE_TIME":"86400", "INTERIM_WAIT_TIME":"50","STOP_WAIT_TIME":"5"}, # 확인할 필드 및 값.
+			#{"SERVICE_ID":'000007', # - AND - 조건들
+			#"AGG_GROUP_NAME":"AG_VLD_01"})
+
+
+
+	write_report_msg("6. 프로세스 재기동")
+	run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:AG")
+	remove_app_file_log("AGG*.${CUR_YYYYMMDD}")
+
+	write_report_msg("7. AG Dupkey 파일을 삭제한다.")
+	# |true는 exit코드 무시
+	run_shell_cmd("find ${WORK_PATH}/${SERVICE_NAME}/AGG* -name *.hist | xargs rm | true")
+	wait_secs(5)
+	run_cli_cmd("STAR-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:AG")
+	wait_secs(5)
+	run_cli_cmd("DISP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:AG")
+
+
+	write_report_msg("Simul 데이타 전송")
+	send_simul_gtp("${TEST_DATA_DIR}")
+
+	wait_secs(180)
+
+	write_report_msg("8. 로그 확인한다.")
+	write_report_msg("FDB 는 0 이다")
+	run_shell_cmd("grep -E 'MAIN IN' ${LOG_BASE_PATH}/${SERVICE_NAME}/AGG*${CUR_YYYYMMDD}")
+	assert_file_grep_sequentially(['MAIN IN\[[ ]*[1-9]+.*FDB\[[ ]*[1-9]+'], "${LOG_BASE_PATH}/${SERVICE_NAME}/AGG*${CUR_YYYYMMDD}")
+
+
+#다시 원래대로
+finally:
+	write_report_msg("====================원복 수행====================")
+	write_report_msg("==================== END ========================")
+
+

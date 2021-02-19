@@ -1,0 +1,43 @@
+#-*- coding: utf-8 -*-
+
+try:
+	write_report_msg ("***  SKT_nTels_POFCS_PKG18.09.0_008_SFC_통계파일수집보완")
+	write_report_msg("""배경
+		S_POFCS_A 시스템의 DISK FULL로 인하여, EMS SFC 프로세스가 통계 파일 수집 후 해당 통계 파일을 backup 파일로 RENAME 하는 과정에서 FAIL 발생
+		해당 POFCS의 통계를 처리 하기 위하여 다른 POFCS의 통계를 수집하지 않는 현상 발생
+
+	""")
+	write_report_msg("특정 POFCS의 통계 수집 후 BACKUP파일로 RENAME이 실패 하더라도 다음 POFCS의 통계를 수집하도록 보완")
+	write_report_msg("1. SFC 프로세스를 종료한다. ")
+	ems_run_cli_cmd("STOP-PRC:${EMS_PACKAGE_NAME}:${EMS_SYSTEM_NAME}:${EMS_SERVICE_NAME}:SC")
+
+	write_report_msg("2. SFC 로그 삭제")
+	ems_run_shell_cmd("rm -f /LOG/PEMS/COMMON/SFC*${CUR_YYYYMMDD}")
+
+	write_report_msg("3. POFCS의 통계 생성 디렉토리 권한을 555로 설정하여 파일을 SFC가 읽을 수는 있으나 RENAME 불가 하도록 설정한다.")
+	run_shell_cmd("chmod 555 /OPER/STAT_SFC")
+	run_shell_cmd("ls -al /OPER/")
+
+	wait_secs(5)
+
+	write_report_msg("3. 프로세스를 시작한다. ")
+	ems_run_cli_cmd("STAR-PRC:${EMS_PACKAGE_NAME}:${EMS_SYSTEM_NAME}:${EMS_SERVICE_NAME}:SC")
+	ems_run_cli_cmd("DISP-PRC:${EMS_PACKAGE_NAME}:${EMS_SYSTEM_NAME}:${EMS_SERVICE_NAME}:")
+
+	#아주 충분히 기다리자
+	#등록된 시스템이 많아서 오래 걸린다.
+	wait_secs(600*2)
+
+	write_report_msg("4. 로그를 통해서 해당 POFCS에서 실패 시 다음 POFCS로 전환됨을 확인한다.")
+	get_ems_file("/LOG/PEMS/COMMON/SFC01.${CUR_YYYYMMDD}")
+
+	#wait_secs(10)
+	assert_file_grep_sequentially_ems(['SUCCESS, FTP connect, IP, 192.168.12.142','FAIL, Rename file from remote server','FTP connect, IP'], "SFC01.${CUR_YYYYMMDD}")
+#다시 원래대로
+finally:
+	write_report_msg("====================원복 수행====================")
+	run_shell_cmd("chmod 755 /OPER/STAT_SFC")
+	run_shell_cmd("ls -al /OPER/")
+	write_report_msg("==================== END ========================")
+
+

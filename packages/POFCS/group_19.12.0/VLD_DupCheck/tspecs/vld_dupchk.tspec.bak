@@ -1,0 +1,94 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg ("*** VLD 중복 검출 오탐 방지 테스트 시나리오 (IPMD-CDR 1 차 중복 검출)")
+
+#///////////////////////////////////////////////////////////////////////////////
+# DB XML 설정 및 확인 
+write_report_msg("  - OUTPUT 에 대한 중복 검출 동작 ‘Y’")
+write_report_msg("  - OUTPUT 1차 중복 검출 ‘Y’, 2차 중복 검출 및 보완 ‘N’")
+write_report_msg("  - INPUT 의 중복 검출 동작은 ‘N’")
+
+
+write_report_msg("1. T_ST_GROUP_DEF 설정한다")
+set_xml_db("T_ST_GROUP_DEF", 
+           {"DUP_CHECK_FLAG":"Y","DUP_MODIFY_FLAG":"N"}, 
+           {"SERVICE_ID":'000007', "ST_GROUP_NAME":"ST_VLD_OUT", 
+            "IN_DATA_NAME":"GTP_PGW_VLD", "OUT_DATA_NAME":"GTP_PGW_OUT"})
+
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("2. NMD_Config.xml 에서 AG, ST 설정한다.")
+write_report_msg("\n\
+    <AG>\n\
+      <CDR_DUP_CHECK>Y</CDR_DUP_CHECK>\n\
+      <DUP_TIME_LIMIT>30</DUP_TIME_LIMIT>\n\
+      <DUP_COUNT_LIMIT>50</DUP_COUNT_LIMIT>\n \
+    </AG>\n\
+    <ST>\n\
+      <CDR_DUP_CHECK>Y</CDR_DUP_CHECK>\n   \
+      <DUP_TIME_LIMIT>20000</DUP_TIME_LIMIT>\n\
+      <DUP_COUNT_LIMIT>5000</DUP_COUNT_LIMIT>\n\
+    </ST>")
+set_xml_cfg("APPLICATION/${SERVICE_NAME}/AG/CDR_DUP_CHECK",   "Y")
+set_xml_cfg("APPLICATION/${SERVICE_NAME}/AG/DUP_TIME_LIMIT",  "30")
+set_xml_cfg("APPLICATION/${SERVICE_NAME}/AG/DUP_COUNT_LIMIT", "50")
+set_xml_cfg("APPLICATION/${SERVICE_NAME}/ST/CDR_DUP_CHECK",   "Y")
+set_xml_cfg("APPLICATION/${SERVICE_NAME}/ST/DUP_TIME_LIMIT",  "20000")
+set_xml_cfg("APPLICATION/${SERVICE_NAME}/ST/DUP_COUNT_LIMIT", "5000")
+
+#///////////////////////////////////////////////////////////////////////////////
+# STD 프로세스를 재초기화 cli 명령 수행
+write_report_msg("4. STD 프로세스를 초기화 한다")
+run_cli_cmd("INIT-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:ST") 
+
+#///////////////////////////////////////////////////////////////////////////////
+# VLD 프로세스를 재초기화 cli 명령 수행
+write_report_msg("5. VLD 프로세스를 초기화 한다")
+run_cli_cmd("INIT-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:VA") 
+
+"""
+write_report_msg(" - UserLocationInfo 필드의 값이 null 인 오류 데이터 및 정상 판정 데이터가 같이 존재함")
+
+write_report_msg("오류 데이타 (IP 형식 에러)")
+run_shell_cmd ("ov -f PGW_CDR  ${TEST_DATA_DIR}/sample_cdr/50.NotNull/GTP_PGW11_01_20191119_1107_000136.DAT | egrep 'userLocationInfo' | head -5")
+
+write_report_msg("정상 데이타 (정상 IP)")
+run_shell_cmd ("ov -f PGW_CDR  ${TEST_DATA_DIR}/sample_cdr/50.NotNull/GTP_PGW11_01_20191119_1107_000137.DAT | egrep 'userLocationInfo' | head -5")
+
+write_report_msg("3. VLD log file, OUTPUT IPMD 내 directory 전부 삭제한다")
+remove_app_file_log("VLD*.${CUR_YYYYMMDD}")
+remove_all_ipmd_output_files() #ex) /POFCS/OUTPUT/GTP_PGW/IPMD 내 폴더안 file삭제
+
+
+#///////////////////////////////////////////////////////////////////////////////
+# simul 전송 -> 관련된 설정은 per_pkg.ini 에 존재 
+write_report_msg("6. simul 전송한다")
+send_simul_gtp ("${TEST_DATA_DIR}/sample_cdr/50.NotNull")
+
+#///////////////////////////////////////////////////////////////////////////////
+# 일정 시간 대기 : VLD 가 처리할때 까지 대기. CR 에서 timeout 처리될때까지
+write_report_msg("7. VLD 가 처리할때 까지 대기한다(5분)")
+wait_secs(300) # XXX 5분 ! 
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("8. validation 체크로 발생한 alarm(21119050) 을 VLD 로그에서 확인한다")
+assert_file_grep("ALARM CODE : [21119050]", "${LOG_BASE_PATH}/${SERVICE_NAME}/VLD*.${CUR_YYYYMMDD}") 
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("9. Error 파일 확인")
+write_report_msg("error cdr 에서 UserLocationInfo 값을 확인")
+run_shell_cmd ("ov -f PGW_META ${OUTPUT_IPMD}/FME*/* | fgrep 'UserLocationInfo'" )
+
+write_report_msg("error cdr 에서 STVLD050 문자열 2개가 나와야 한다")
+assert_eq_cmd_output ("ov -f PGW_META ${OUTPUT_IPMD}/FME*/* | fgrep 'STVLD050'  | wc -l", "2")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("10. 정상 파일 확인")
+write_report_msg("정상 output cdr 에서 STVLD050 문자열을 찾는다. 0개가 나와야 한다")
+assert_eq_cmd_output ("ov -f PGW_IPMD ${OUTPUT_IPMD}/FML*/* | fgrep 'STVLD050'  | wc -l", "0")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("11. validation 체크로 발생한 alarm(21119050) 을 T_NFW_ALARM_STATUS 에서 확인한다")
+#assert_db_exists("T_NFW_ALARM_STATUS", "CODE='21119050' AND PRC_DATE='${CUR_YYYYMMDD}'")
+"""
+

@@ -1,0 +1,44 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg("DT FTP 접속 실패 시 Alive 처리 보완")
+write_report_msg("1) DT 에서 FTP 접속 실패 시 Alive 정보 업데이트를 하는지 확인한다.")
+write_report_msg("2) DT 에서 FTP 접속 실패 시 pfmPMS 에 의한 재기동이 미 발생하는지 확인한다.")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("판정 기준") 
+write_report_msg("DST 프로세스는 FTP 연동 오류가 감지된 경우, 알람을 생성한다.")
+write_report_msg("DST 프로세스는 FTP 연동이 복구된 경우, 알람을 Cleared 처리한다.")
+#///////////////////////////////////////////////
+
+write_report_msg("1. PFNM MES 재기동 및 ARM 재기동") 
+execute_sql(delete from t_nfw_alarm_status where system_id='3333';)
+run_shell_cmd("pfmStp.sh.test mes")
+wait_secs(10)
+run_shell_cmd("pfmRun.sh.test mes")
+wait_secs(30)
+run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:COMMON:AM:")
+wait_secs(30)
+run_cli_cmd("STAR-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:COMMON:AM:")
+
+#///////////////////////////////////////////////////////////////////////////////
+
+write_report_msg("2. EMS 동기화 시간 변경 및 EMS_PSM 재기동)")
+#send_simul_gtp("${TEST_DATA_DIR}")
+#wait_secs(5)
+ems_run_shell_cmd("cp /OPER/PEMS/UPMS_POLICY/20200601_T_CONV_LIST.csv /OPER/PEMS/UPMS_POLICY/${CUR_YYYYMMDD}_T_CONV_LIST.csv")
+ems_run_shell_cmd("cp /OPER/PEMS/UPMS_POLICY/20200601_t_emp_bill_type_master.csv /OPER/PEMS/UPMS_POLICY/${CUR_YYYYMMDD}_t_emp_bill_type_master.csv")
+ems_run_shell_cmd("cp /OPER/PEMS/UPMS_POLICY/20200601_t_md_action_detail_rule_sub_master.csv /OPER/PEMS/UPMS_POLICY/${CUR_YYYYMMDD}_t_md_action_detail_rule_sub_master.csv")
+ems_run_shell_cmd("cp /OPER/PEMS/UPMS_POLICY/20200601_t_proxy_condition_master.csv /OPER/PEMS/UPMS_POLICY/${CUR_YYYYMMDD}_t_proxy_condition_master.csv")
+ems_run_shell_cmd("cp /OPER/PEMS/UPMS_POLICY/20200601_t_svc_info_base.csv /OPER/PEMS/UPMS_POLICY/${CUR_YYYYMMDD}_t_svc_info_base.csv")
+psm_set_config_and_restart(2)
+wait_secs(120)
+
+#///////////////////////////////////////////////
+write_report_msg("3. ARM 동기화 완료 로그 확인")
+assert_poll_cmd_output_include_string( "strings ${LOG_BASE_PATH}/COMMON/ARM*.${CUR_YYYYMMDD} | grep 'End Reconfig' | wc -l ", "1", max_wait_secs=240)
+#///////////////////////////////////////////////
+write_report_msg("4. EMS PEMS 동기화 완료 로그 확인")
+#assert_poll_cmd_output_include_string( "strings ${LOG_BASE_PATH}/PFNM/SVC/MES*.${CUR_YYYYMMDD} | grep queue | tail -1 | awk -F',' '{print $6}' | awk -F'&' '{if($1 > 0.00) print $1}' | wc -l ", "1", max_wait_secs=240)
+
+run_cli_cmd("pkill SIM")
+write_report_msg("=============== END ============")

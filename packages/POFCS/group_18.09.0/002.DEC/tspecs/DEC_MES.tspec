@@ -1,0 +1,22 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg("*** PKG_18.09.0 : MES 데이터 수신 및 처리")
+write_report_msg("DEC,STD01 큐를 확인한다")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("1.DEC,STD 프로세스 종료")
+run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_PGW:DE")
+run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_PGW:ST")
+write_report_msg("2. Simulator 데이타 전송")
+send_simul_gtp("${TEST_DATA_DIR}")
+wait_secs(30)
+write_report_msg("3. DEC 큐 확인")
+assert_eq_cmd_output ("pfmCLI --userid=admin --password=1 --command=DISP-QUEUE:OFCS:POFCS3:GTP_PGW: | grep DEC01 | awk '{print $8}'", "1")
+wait_secs(5)
+run_cli_cmd("STAR-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_PGW:DE")
+wait_secs(10)
+write_report_msg("4. STD 큐 확인")
+assert_eq_cmd_output ("pfmCLI --userid=admin --password=1 --command=DISP-QUEUE:OFCS:POFCS3:GTP_PGW: | grep STD01 | awk '{print $8}'", "1")
+wait_secs(5)
+run_cli_cmd("STAR-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_PGW:ST")
+write_report_msg("=============== END ============")

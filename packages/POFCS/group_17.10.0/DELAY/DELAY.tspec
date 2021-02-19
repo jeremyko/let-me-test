@@ -1,0 +1,35 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg("*** PKG_17.10.0 : 메모리 기반 과거 데이터 검출 기능")
+write_report_msg(" 과거 데이터 유입 시 알람 발생 및 해당 파일을 기록하는지 확인한다.")
+
+#///////////////////////////////////////////////////////////////////////////////
+#set_xml_cfg("APPLICATION/${SERVICE_NAME}/CDR_DUP_CHECK","Y")
+#set_xml_cfg("APPLICATION/${SERVICE_NAME}/LO/OLD_DATA_TIME_LIMIT","7200")
+write_report_msg("1.DEC,RCT 설정 변경 및 재기동, 로그 백업")
+run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_PGW:DE:DEC01")
+run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_PGW:RT")
+wait_secs(5)
+#run_shell_cmd ("cp ${TEST_DATA_DIR}/NMD_Config.xml /POFCS/CG/CFG/NMD_Config.xml")
+
+run_shell_cmd ("cp /POFCS/LOG/GTP_PGW/DEC01*.`date +%Y%m%d` /POFCS/LOG/GTP_PGW/DEC01_1.`date +%Y%m%d`_BAK")
+run_shell_cmd ("cp /POFCS/LOG/GTP_PGW/RCT11_1*.`date +%Y%m%d` /POFCS/LOG/GTP_PGW/RCT11_1.`date +%Y%m%d`_BAK")
+
+run_shell_cmd ("rm /POFCS/LOG/GTP_PGW/DEC01*.`date +%Y%m%d`")
+run_shell_cmd ("rm /POFCS/LOG/GTP_PGW/RCT11_1*.`date +%Y%m%d`")
+wait_secs(5)
+run_cli_cmd("STAR-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_PGW:RT")
+run_cli_cmd("STAR-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_PGW:DE:DEC01")
+#//////////////////////////////////////////////////////////////////////////////
+#set_xml_cfg("APPLICATION/${SERVICE_NAME}/RT/OLD_DATA_TIME_LIMIT","7200")
+#write_report_msg("2.DEC,RCT 로그 삭제")
+write_report_msg("3. Simulator 데이타 전송")
+send_simul_gtp("${TEST_DATA_DIR}/sample")
+wait_secs(60)
+assert_eq_cmd_output ("find /POFCS/OUTPUT/ADJUST/GTP_PGW/DEC01/`date +%Y%m%d` -name '*.VLD005' -cmin -5 | wc -l", "1")
+wait_secs(5)
+assert_file_grep("ALARM CODE : [21100111]", "${LOG_BASE_PATH}/${SERVICE_NAME}/DEC01*.${CUR_YYYYMMDD}", 20)
+wait_secs(5)
+assert_file_grep("INVALID CDR Time", "${LOG_BASE_PATH}/${SERVICE_NAME}/RCT11_1*.${CUR_YYYYMMDD}", 20)
+
+write_report_msg("=============== END ============")

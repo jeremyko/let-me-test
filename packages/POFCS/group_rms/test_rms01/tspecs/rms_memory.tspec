@@ -1,0 +1,5 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg("RMS total memory 로그 내용과 실제 계산된 내용을 출력한다.")
+
+rms_mem_info_check()

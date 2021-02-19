@@ -1,0 +1,20 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg("RMS app memory top 20 로그 내용과 실제 ps 조회 내용을 출력.")
+
+write_report_msg("먼저 RMS 로그를 삭제하고, 'app mem' 로그가 20개 나올때까지 기다린다")
+
+remove_pfnm_file_log("RMS*.${CUR_YYYYMMDD}")
+
+assert_poll_cmd_output_include_string ("grep 'app mem' ${LOG_BASE_PATH}/PFNM/SYS/RMS.01.LOG.${CUR_YYYYMMDD} | wc -l", "20", 600)
+    
+run_shell_cmd("grep 'app mem' ${LOG_BASE_PATH}/PFNM/SYS/RMS.01.LOG.${CUR_YYYYMMDD}")
+
+write_report_msg("RMS 에서 app memory 로그가 20개 기록되면 즉시, 실제 메모리 정보 확인")
+
+run_shell_cmd("ps -eo pid,rss,command --sort -rss | head -n 21")
+
+
+
+
+

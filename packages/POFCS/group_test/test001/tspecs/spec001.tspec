@@ -1,0 +1,19 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg("spec1")
+"""
+run_cli_cmd("INIT-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:ST") 
+run_cli_cmd("INIT-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:VA") 
+run_cli_cmd("INIT-PFM:${PACKAGE_NAME}:${SYSTEM_NAME}:MES") 
+run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:VA") 
+run_cli_cmd("STAR-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:VA") 
+"""
+"""
+set_xml_db("T_NFW_ALARM_DEF", 
+           {"THRESHOLD_TIME_SECS":"0","THRESHOLD_CNT":"0",
+            "NO_ALARM_HOUR_FROM":"${CURR_HH}",
+            "NO_ALARM_HOUR_TO"  :"${CURR_HH+1}","ALARM_FLAG":"Y"}, 
+           {"CODE":"21119053"}) 
+
+get_xml_cfg("APPLICATION/${SERVICE_NAME}/AG/CDR_DUP_CHECK")
+"""

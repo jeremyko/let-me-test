@@ -1,0 +1,20 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg("*** PKG_17.10.0 : 메모리 기반 중복 데이터 검출 기능")
+write_report_msg(" 중복 데이터 유입 시 알람 발생 및 해당 파일을 기록하는지 확인한다.")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("1.AG 로그 백업")
+run_shell_cmd ("cp /POFCS/LOG/GTP_PGW/AGG01*.`date +%Y%m%d` /POFCS/LOG/GTP_PGW/AGG01_1.`date +%Y%m%d`_BAK")
+write_report_msg("2.AG 로그 삭제")
+run_shell_cmd ("rm /POFCS/LOG/GTP_PGW/AGG01*.`date +%Y%m%d`")
+write_report_msg("3. Simulator 데이타 전송")
+send_simul_gtp("${TEST_DATA_DIR}")
+wait_secs(60)
+write_report_msg("4. Simulator 데이타 재전송")
+send_simul_gtp("${TEST_DATA_DIR}")
+wait_secs(60)
+assert_eq_cmd_output ("find /POFCS/OUTPUT/ADJUST/GTP_PGW/AGG01/`date +%Y%m%d` -name '*.DUP001' -cmin -5 | wc -l", "1")
+assert_file_grep("ALARM CODE : [21100128]", "${LOG_BASE_PATH}/${SERVICE_NAME}/AGG01*.${CUR_YYYYMMDD}", 20)
+
+write_report_msg("=============== END ============")

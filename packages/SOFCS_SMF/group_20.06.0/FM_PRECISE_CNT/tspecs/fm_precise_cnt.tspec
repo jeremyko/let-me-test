@@ -1,0 +1,63 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg ("*** FM 파일개수 설정기준에 정확히 일치하게 생성 보완")
+write_report_msg ("T_FM_DEF 테이블의 DATA_CNT_LIMIT 에 설정된 개수에 정확하게 일치하는지 체크 한다")
+
+#///////////////////////////////////////////////////////////////////////////////
+# DB XML 설정 및 확인 
+write_report_msg("1. Check 조건 확인")
+write_report_msg(" - NMD_Config.xml의 AGG항목 CDR_DUP_CHECK   =N  설정 ")
+set_xml_cfg("APPLICATION/${SERVICE_NAME}/AG/CDR_DUP_CHECK"  ,"N")
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("2. AGG 를 재기동 한다.")
+run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:AG")
+run_cli_cmd("STAR-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:AG")
+
+write_report_msg(" - T_FM_DEF 에 DATA_CNT_LIMIT 값을 5 로 정의한다")
+
+set_xml_db("T_FM_DEF", 
+            # 설정할 필드 및 값.
+           {"DATA_CNT_LIMIT":"5"}, 
+            # - AND - 조건들
+           {"SERVICE_ID":"000008"})
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("3. Sample 데이터를 확인한다.")
+write_report_msg(" - main 30개 , 각 main 당 LOS 4개로 이루어진 CDR 임")
+run_shell_cmd ("ov -f SOFCS_CDR ${TEST_DATA_DIR}/fm_precise_30.cdr | grep FileName ")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("4. FM log file, OUTPUT IPMD 내 directory 전부 삭제한다")
+remove_app_file_log("FM*.${CUR_YYYYMMDD}")
+remove_all_ipmd_output_files() 
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("5. FM 프로세스를 초기화 한다")
+run_cli_cmd("INIT-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:FM") 
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("6. simul 전송한다")
+send_simul_gtp ("${TEST_DATA_DIR}")
+
+
+write_report_msg("7. output IPMD 에 결과가 다 생성될때까지 대기한다(예상 결과: *.B01 이 6개 생성됨) ")
+assert_poll_cmd_output_include_string ("ls -al ${OUTPUT_IPMD}/FM*/*.B01 | wc -l", "6", 600)
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("8. OUTPUT IPMD 파일 확인")
+write_report_msg("정상 output cdr 에서 CDR 30 개가 출력는지 확인한다. 30개가 나와야 한다")
+run_shell_cmd ("ov -f SOFCS_IPMD ${OUTPUT_IPMD}/FM*/* | grep FileName ")
+assert_eq_cmd_output ("ov -f SOFCS_IPMD ${OUTPUT_IPMD}/FM*/* | grep FileName | wc -l", "30")
+
+write_report_msg("9. CDR 30 개가 정확하게 5개씩 나눠져서 6개 파일에 저장되었는지 확인한다")
+write_report_msg("  각 파일마다 'Record Seq : 1', 'Record Seq : 2', 'Record Seq : 3', 'Record Seq : 4', 'Record Seq : 5' 가 저장된다")
+write_report_msg("  그러므로 file 에서 grep 으로 'Record Seq : 1' 을 찾으면 6개가 나와야 정상임")
+assert_eq_cmd_output("ov -f SOFCS_IPMD /OUTPUT/GTP_SMF/IPMD/FM*/* | grep FileName | grep 'Record Seq : 1' | wc -l","6")
+assert_eq_cmd_output("ov -f SOFCS_IPMD /OUTPUT/GTP_SMF/IPMD/FM*/* | grep FileName | grep 'Record Seq : 2' | wc -l","6")
+assert_eq_cmd_output("ov -f SOFCS_IPMD /OUTPUT/GTP_SMF/IPMD/FM*/* | grep FileName | grep 'Record Seq : 3' | wc -l","6")
+assert_eq_cmd_output("ov -f SOFCS_IPMD /OUTPUT/GTP_SMF/IPMD/FM*/* | grep FileName | grep 'Record Seq : 4' | wc -l","6")
+assert_eq_cmd_output("ov -f SOFCS_IPMD /OUTPUT/GTP_SMF/IPMD/FM*/* | grep FileName | grep 'Record Seq : 5' | wc -l","6")
+
+assert_eq_cmd_output("ov -f SOFCS_IPMD /OUTPUT/GTP_SMF/IPMD/FM*/* | grep FileName | grep 'Record Seq : 6' | wc -l","0")
+
+

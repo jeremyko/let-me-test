@@ -1,0 +1,114 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg ("*** VLD_Validation 강화 테스트 시나리오 (표현식 패턴 Validation)")
+
+# XXX  이 테스트는 개별로 수행하면 성공 하는데, 다른것들과 함께 수행하면 실패?
+
+#///////////////////////////////////////////////////////////////////////////////
+# XXX XXX mes queue , file db clear  --> 이거 해도 소용없었음
+#write_report_msg("mes queue , file db 모두 삭제 먼저 하고 테스트 시작")
+#write_report_msg("성공, 실패가 무작위로 발생 안하게 방지")
+#run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}") 
+#wait_secs(10) 
+#clear_file_db()    
+#clear_mes_queue_restart_pfnm()
+#run_cli_cmd("STAR-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}") 
+#wait_secs(10) 
+
+#///////////////////////////////////////////////////////////////////////////////
+# DB XML 설정 및 확인 
+write_report_msg("1. Check 조건 확인")
+write_report_msg(" - RuleBaseName 필드는 정규표현식에 정의된 값을 가져아한다")
+
+write_report_msg(" - ST 에서 체크되지 않도록 먼저 설정한다")
+set_xml_db("T_DATA_FORMAT", 
+            # 설정할 필드 및 값.
+           {"VALUE_CHECK_TYPE":"1","ALLOW_SPACE":"Y"}, 
+            # - AND - 조건들
+           {"SERVICE_ID":'000007', "DATA_NAME":"GTP_PGW_VLD", "STRUCTURE_CD":"1", "FIELD_NAME":"RuleBaseName"})
+
+write_report_msg(" - VLD 에서 체크되도록 설정한다")
+set_xml_db("T_DATA_FORMAT", 
+           {"VALUE_CHECK_TYPE":"56","ALLOW_SPACE":"N","CHECK_PATTERN":"[A-Z][o-p][QP][O-Zo-z]{2}[_]NoGBR"}, 
+           {"SERVICE_ID":'000007', "DATA_NAME":"GTP_PGW_OUT", "STRUCTURE_CD":"1", "FIELD_NAME":"RuleBaseName"})
+
+set_xml_db("T_DATA_FORMAT", 
+           {"VALUE_CHECK_TYPE":"56","ALLOW_SPACE":"N","CHECK_PATTERN":"[A-Z][o-p][QP][O-Zo-z]{2}[_]NoGBR"}, 
+           {"SERVICE_ID":'000007', "DATA_NAME":"GTP_PGW_META", "STRUCTURE_CD":"1", "FIELD_NAME":"RuleBaseName"})
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("*** 정규표현식 설명 : ")
+write_report_msg(" [A-Z] : A~Z 1자리")
+write_report_msg(" [o-p] : o~p 1자리")
+write_report_msg(" [QP]  : Q or P 1자리")
+write_report_msg(" [O-Zo-z]{2} : O~Z or o~z 2자리")
+write_report_msg(" [_]   : ‘_’ 1자리 지정")
+write_report_msg(" NoGBR : ‘NoGBR’ 스트링 지정")
+write_report_msg(" [A-Z][o-p][QP][O-Zo-z]{2}[_]NoGBR")
+write_report_msg(" N     o    Q   oS         _ NoGBR")
+write_report_msg("*** 정규 표현식 규칙")
+write_report_msg(" ^ : 문자열의 시작")
+write_report_msg(" $ : 문자열의 종료. 옵션에 따라 문장의 끝 또는 문서의 끝에 매치된다.")
+write_report_msg(" . : 임의의 한 문자")
+write_report_msg(" []: 문자 클래스. 문자 클래스 안에 들어가 있는 문자는 그 바깥에서 하나의 문자로 취급된다.")
+write_report_msg(" - : ex) a-z는 a에서 z까지의 문자")
+write_report_msg(" ? : 앞 문자가 없거나 하나 있음")
+write_report_msg(" + : 앞 문자가 하나 이상임")
+write_report_msg(" * : 앞 문자가 0개 이상임")
+write_report_msg(" {n,m} : 앞 문자가 n개 이상 m개 이하. {0,1} 은 ?와 같은 의미다.")
+write_report_msg(" {n,} : 앞 문자가 n개 이상. 위의 형태에서 m이 생략된 형태이다. {0,} 이면 *와 같고 {1,} 이면 +와 같은 의미이다.")
+write_report_msg(" {n} : 앞 문자가 정확히 n개. {n,n} 과 같은 의미이다.")
+write_report_msg(" \s : 공백문자")
+
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("2. Sample 데이터를 확인한다.")
+write_report_msg(" - chargingRuleBaseName 필드가 등록된 패턴에 오류로 판정되는 에러 데이터 및 정상 판정 데이터가 같이 존재함")
+
+write_report_msg("오류 데이타 (대문자 O 존재)")
+run_shell_cmd ("ov -f PGW_CDR  ${TEST_DATA_DIR}/sample_cdr/56.RegExpr/GTP_PGW11_01_20191119_1107_000136.DAT | grep chargingRuleBaseName | head -5")
+
+write_report_msg("정상 데이타 ")
+run_shell_cmd ("ov -f PGW_CDR  ${TEST_DATA_DIR}/sample_cdr/56.RegExpr/GTP_PGW11_01_20191119_1107_000137.DAT | grep chargingRuleBaseName | head -5")
+
+write_report_msg("3. VLD log file, OUTPUT IPMD 내 directory 전부 삭제한다")
+remove_app_file_log("VLD*.${CUR_YYYYMMDD}")
+remove_all_ipmd_output_files() 
+
+#///////////////////////////////////////////////////////////////////////////////
+# STD 프로세스를 재초기화 cli 명령 수행
+write_report_msg("4. STD 프로세스를 초기화 한다")
+run_cli_cmd("INIT-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:ST") 
+
+#///////////////////////////////////////////////////////////////////////////////
+# VLD 프로세스를 재초기화 cli 명령 수행
+write_report_msg("5. VLD 프로세스를 초기화 한다")
+run_cli_cmd("INIT-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:VA") 
+
+#///////////////////////////////////////////////////////////////////////////////
+# simul 전송 -> 관련된 설정은 per_pkg.ini 에 존재 
+write_report_msg("6. simul 전송한다")
+send_simul_gtp ("${TEST_DATA_DIR}/sample_cdr/56.RegExpr")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("7. validation 체크로 발생한 alarm(21119056) 을 VLD 로그에서 확인한다(최대10분 대기)")
+assert_file_grep("ALARM CODE : [21119056]", "${LOG_BASE_PATH}/${SERVICE_NAME}/VLD*.${CUR_YYYYMMDD}", 600) 
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("8. Error 파일 확인")
+write_report_msg("error cdr 에서 STVLD056 문자열을 찾는다(최대 10분 대기). ")
+#wait_secs(360) # error 파일 생성 될때까지 여유
+#assert_cmd_output_include_string ("ov -f PGW_META ${OUTPUT_IPMD}/FME*/* | fgrep 'STVLD056'", "STVLD056")
+assert_poll_cmd_output_include_string ("ov -f PGW_META ${OUTPUT_IPMD}/FME*/* | fgrep 'STVLD056'", "STVLD056", 600)
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("9. 정상 파일 확인")
+write_report_msg("정상 output cdr 에서 STVLD056 문자열을 찾는다. 0개가 나와야 한다")
+assert_eq_cmd_output ("ov -f PGW_IPMD ${OUTPUT_IPMD}/FML*/* | fgrep 'STVLD056'  | wc -l", "0")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("10. validation 체크로 발생한 alarm(21119056) 을 T_NFW_ALARM_STATUS 에서 확인한다")
+# table 명과 where 조건에 해당되는 문자열을 넘겨준다. 
+#assert_db_exists("T_NFW_ALARM_STATUS", "CODE='21119056' AND PRC_DATE='${CUR_YYYYMMDD}'")
+
+

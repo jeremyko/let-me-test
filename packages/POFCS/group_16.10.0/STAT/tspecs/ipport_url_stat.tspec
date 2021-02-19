@@ -1,0 +1,71 @@
+#-*- coding: utf-8 -*-
+
+
+write_report_msg("*** PKG_16.10.0 : 정책 통계 파일을 생성")
+write_report_msg("1) IP/PORT 정책 통계 파일을 생성하는지 확인한다.")
+write_report_msg("2) URL  정책 통계 파일을 생성하는지 확인한다.")
+
+
+write_report_msg("판정 기준") 
+write_report_msg("IP/PORT 정책에 대해 정책 통계를 파일로 기록한다.") 
+write_report_msg("URL 정책에 대해 정책 통계를 파일로 기록한다.") 
+
+#///////////////////////////////////////////////////////////////////////////////
+
+write_report_msg("1. 정책 XML 파일 백업 및 변경")
+run_shell_cmd ("cp /POFCS/OPER/XML_FILE/T_CONV_LIST.xml ${TEST_DATA_DIR}/XML_FILE/T_CONV_LIST.xml.ori")
+run_shell_cmd ("cp ${TEST_DATA_DIR}/XML_FILE/T_CONV_LIST.xml.test /POFCS/OPER/XML_FILE/T_CONV_LIST.xml")
+
+write_report_msg("2. 정책 통계 파일 생성 주기 변경")
+set_xml_db("T_FM_DEF",{"STAT_TERM_PACKET":"3600","STAT_TERM_POLICY":"60"},{"SYSTEM_ID":"3333","SERVICE_ID":"000007","PROCESS_ID":"708031"})
+set_xml_db("T_FM_DEF",{"STAT_TERM_PACKET":"3600","STAT_TERM_POLICY":"60"},{"SYSTEM_ID":"3333","SERVICE_ID":"000007","PROCESS_ID":"708032"})
+set_xml_db("T_FM_DEF",{"STAT_TERM_PACKET":"3600","STAT_TERM_POLICY":"60"},{"SYSTEM_ID":"3333","SERVICE_ID":"000007","PROCESS_ID":"708033"})
+set_xml_db("T_FM_DEF",{"STAT_TERM_PACKET":"3600","STAT_TERM_POLICY":"60"},{"SYSTEM_ID":"3333","SERVICE_ID":"000007","PROCESS_ID":"708034"})
+set_xml_db("T_FM_DEF",{"STAT_TERM_PACKET":"3600","STAT_TERM_POLICY":"60"},{"SYSTEM_ID":"3333","SERVICE_ID":"000007","PROCESS_ID":"708035"})
+set_xml_db("T_FM_DEF",{"STAT_TERM_PACKET":"3600","STAT_TERM_POLICY":"60"},{"SYSTEM_ID":"3333","SERVICE_ID":"000007","PROCESS_ID":"708036"})
+set_xml_db("T_FM_DEF",{"STAT_TERM_PACKET":"3600","STAT_TERM_POLICY":"60"},{"SYSTEM_ID":"3333","SERVICE_ID":"000007","PROCESS_ID":"708037"})
+set_xml_db("T_FM_DEF",{"STAT_TERM_PACKET":"3600","STAT_TERM_POLICY":"60"},{"SYSTEM_ID":"3333","SERVICE_ID":"000007","PROCESS_ID":"708038"})
+set_xml_db("T_FM_DEF",{"STAT_TERM_PACKET":"3600","STAT_TERM_POLICY":"60"},{"SYSTEM_ID":"3333","SERVICE_ID":"000007","PROCESS_ID":"708039"})
+set_xml_db("T_FM_DEF",{"STAT_TERM_PACKET":"3600","STAT_TERM_POLICY":"60"},{"SYSTEM_ID":"3333","SERVICE_ID":"000007","PROCESS_ID":"708040"})
+
+write_report_msg("3. FMS 프로세스 재기동")
+run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_PGW:FM:")
+wait_secs(10)
+run_cli_cmd("STAR-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_PGW:FM:")
+wait_secs(10)
+
+write_report_msg("2. Simulator 데이타 전송")
+send_simul_gtp("${TEST_DATA_DIR}/IP_PORT")
+wait_secs(10)
+send_simul_gtp("${TEST_DATA_DIR}/URL")
+wait_secs(180)
+#///////////////////////////////////////////////
+
+write_report_msg("3. IP_PORT 및 URL 정책 통계 파일 확인")
+
+assert_eq_cmd_output ("find /OPER/STAT -cmin -10 -name '*POLICY*' -exec cat {} \; | grep 112.223.69.34 | awk -F',' '{print $20}'", "\'FRE\'")
+assert_eq_cmd_output ("find /OPER/STAT -cmin -10 -name '*POLICY*' -exec cat {} \; | grep 211.33.88.72 | awk -F',' '{print $20}'", "\'TSP\'")
+assert_eq_cmd_output ("find /OPER/STAT -cmin -10 -name '*POLICY*' -exec cat {} \; | grep 220.103.228.165 | awk -F',' '{print $20}'", "\'PTT\'")
+assert_eq_cmd_output ("find /OPER/STAT -cmin -10 -name '*POLICY*' -exec cat {} \; | grep https://t-smartwallet.nate.com:7769/smartwallet/ | awk -F',' '{print $18}'", "\'TSW\'")
+wait_secs(600)
+
+# 정책 통계 테이블 기록 확인.
+write_report_msg("4. DB 정책 통계 테이블 수집 및 기록 기능 확인")
+assert_db_exists("T_POLICY_IP_PORT_STAT_HOUR", "SER_IP='112.223.69.34' AND SVC_TYPE='FRE' AND closed_date >= (sysdate-1/24) AND SYSTEM_ID='3333'") 
+assert_db_exists("T_POLICY_IP_PORT_STAT_HOUR", "SER_IP='211.33.88.72' AND SVC_TYPE='TSP' AND closed_date >= (sysdate-1/24) AND SYSTEM_ID='3333'") 
+assert_db_exists("T_POLICY_IP_PORT_STAT_HOUR", "SER_IP='220.103.228.165' AND SVC_TYPE='PTT' AND closed_date >= (sysdate-1/24) AND SYSTEM_ID='3333'") 
+
+#assert_db_exists("T_POLICY_IP_PORT_STAT_HOUR", "SER_IP='112.223.69.34' AND SVC_TYPE='FRE' AND SYSTEM_ID='3333' AND closed_date>=to_date(sysdate,'DD-MON-RR')") 
+#assert_db_exists("T_POLICY_IP_PORT_STAT_HOUR", "SER_IP='211.33.88.72' AND SVC_TYPE='TSP' AND SYSTEM_ID='3333' AND closed_date>=to_date(sysdate,'DD-MON-RR')") 
+#assert_db_exists("T_POLICY_IP_PORT_STAT_HOUR", "SER_IP='220.103.228.165' AND SVC_TYPE='PTT' AND SYSTEM_ID='3333' AND closed_date>=to_date(sysdate,'DD-MON-RR')")
+
+write_report_msg("3. 원복")
+run_shell_cmd ("cp ${TEST_DATA_DIR}/XML_FILE/T_CONV_LIST.xml.ori /POFCS/OPER/XML_FILE/T_CONV_LIST.xml")
+run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_PGW:FM:")
+wait_secs(10)
+run_cli_cmd("STAR-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:GTP_PGW:FM:")
+
+write_report_msg("=============== END ============")
+
+
+

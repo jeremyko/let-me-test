@@ -1,0 +1,15 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg("*** PKG_17.08.1 : STD PPE Service Type 처리 기능")
+write_report_msg("1) 한도만료 사용자이면서 기업과금 사용량이 아닌 경우에 IPMD-CDR 의 Service Type 이 PPE 로 반영하는지 확인한다.")
+
+#///////////////////////////////////////////////////////////////////////////////
+
+write_report_msg("1. Simulator 데이타 전송")
+send_simul_gtp("${TEST_DATA_DIR}")
+wait_secs(240)
+write_report_msg("2. 한도만료 고객이고, 기업과금 사용량이 아닌 경우 “PPE” 서비스 타입 처리")
+wait_secs(5)
+#assert_eq_cmd_output ("find ${OUTPUT_IPMD} -cmin -6 -name 'P*B01' -exec ov -f PGW_IPMD -s '[SKTPPE] : 238' {} \; | grep ServiceType", "PPE")
+assert_eq_cmd_output ("find ${OUTPUT_IPMD} -cmin -6 -name 'P*B01' -exec ov -f PGW_IPMD {} \; | grep ServiceType | grep PPE | wc -l", "1")
+write_report_msg("=============== END ============")

@@ -1,0 +1,78 @@
+#-*- coding: utf-8 -*-
+
+write_report_msg ("*** DUP 메시지 검출 시 알람 및 파일로그 생성 시  문구에 전화번호가 포함")
+write_report_msg ("MSISDN 정보 표시한다")
+
+#///////////////////////////////////////////////////////////////////////////////
+# DB XML 설정 및 확인 
+write_report_msg("1. Check 조건 확인")
+write_report_msg(" - MSISDN 필드를 알람 필드로 설정")
+write_report_msg("   T_DATA_FORMAT.MSISDN 의 ext type을 FD_EXT_TYPE_VLD_KEY(14) 로 설정")
+
+set_xml_db("T_DATA_FORMAT", 
+            # 설정할 필드 및 값.
+           {"FIELD_EXT_TYPE":"14"},
+            # - AND - 조건들
+           {"DATA_NAME":"SOFCS_IN_META", "FIELD_NAME":"ServedMSISDN"})
+
+write_report_msg("agg에서 dup 알람이 발생되도록 NMD_Config.xml의 AGG항목 설정한다. ")
+write_report_msg(" - NMD_Config.xml의 AGG항목 CDR_DUP_CHECK   =Y  설정 ")
+write_report_msg(" - NMD_Config.xml의 AGG항목 DUP_TIME_LIMIT  =60 설정 ")
+write_report_msg(" - NMD_Config.xml의 AGG항목 DUP_COUNT_LIMIT =2 설정 ")
+set_xml_cfg("APPLICATION/${SERVICE_NAME}/AG/CDR_DUP_CHECK"  ,"Y")
+set_xml_cfg("APPLICATION/${SERVICE_NAME}/AG/DUP_TIME_LIMIT" ,"60")
+set_xml_cfg("APPLICATION/${SERVICE_NAME}/AG/DUP_COUNT_LIMIT","2")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("2. Sample 데이터를 확인한다.")
+write_report_msg(" - main 30개 , 각 main 당 LOS 4개로 이루어진 CDR 임")
+run_shell_cmd ("ov -f SOFCS_CDR ${TEST_DATA_DIR}/main30_los4.cdr | grep FileName ")
+run_shell_cmd ("ov -f SOFCS_CDR ${TEST_DATA_DIR}/main30_los4.cdr | grep listOfServiceData | wc -l ") 
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("3. work path 에서 AGG hist 파일 전부 삭제한다")
+run_shell_cmd("find ${WORK_PATH}/${SERVICE_NAME}/AG* -name '*.hist' | xargs rm -f")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("4. AGG 를 재기동 한다.")
+run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:AG")
+run_cli_cmd("STAR-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:AG")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("5. simul 전송한다. ")
+send_simul_gtp ("${TEST_DATA_DIR}")
+
+#///////////////////////////////////////////////////////////////////////////////
+wait_secs(10)
+write_report_msg("6. WORK 경로에 AGG가 hist 파일을 생성한것을 확인한다")
+write_report_msg("   (AGG가 hist 파일을 생성한 이후 중복 CDR 전송해야 dup check 됨)")
+assert_eq_cmd_output("ls -a /WORK/GTP_SMF/AG*/*.hist  | wc -l ", "1")
+
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("7. AGG 를 재기동 한다.")
+run_cli_cmd("STOP-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:AG")
+run_cli_cmd("STAR-PRC:${PACKAGE_NAME}:${SYSTEM_NAME}:${SERVICE_NAME}:AG")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("8. AGG log file 전부 삭제한다")
+remove_app_file_log("AGG*.${CUR_YYYYMMDD}")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("9. simul 전송한다. dup 발생을 위해 동일 데이터를 다시 전송한다.")
+send_simul_gtp ("${TEST_DATA_DIR}")
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("10. AG 에서 dup 알람 발생 로그 나올때까지 대기한다 ")
+assert_file_grep("ALARM CODE", 
+        "${LOG_BASE_PATH}/${SERVICE_NAME}/AGG*.${CUR_YYYYMMDD}", 600) 
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("11. AG 알람로그에 전화번호 출력되었는지 확인. 'Duplicate Data from [SMFSIM01][MDN:790927900020]' ")
+assert_file_grep("[MDN:790927900020]", 
+        "${LOG_BASE_PATH}/${SERVICE_NAME}/AGG*.${CUR_YYYYMMDD}", 600) 
+
+#///////////////////////////////////////////////////////////////////////////////
+write_report_msg("12. AG 알람로그 전체 출력 ")
+run_shell_cmd ("grep 'ALARM CODE' ${LOG_BASE_PATH}/${SERVICE_NAME}/AGG*.${CUR_YYYYMMDD} ")
+
