@@ -13,7 +13,7 @@
         pkg_test -h
 
     전체 package 모두 수행
-        pkg_dir  [package_directory_path]
+        pkg_test  [package_directory_path]
         
         ex) pkg_test ./packages/POFCS
 
