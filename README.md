@@ -1,5 +1,7 @@
 # Test Automation Framework
 
+linux shell-based test automation framework (made of python)
+
 ### install dependencies
 
     cd dependencies
